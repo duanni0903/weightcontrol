@@ -148,6 +148,10 @@ nav button.on{color:var(--primary);font-weight:700}
 .fmain:hover{background:var(--bg)}
 .fn{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
 .fn small,.fk small{display:block;font-size:11px;color:var(--muted)}
+.famt{display:flex;align-items:center;gap:3px;padding:0 6px;border-left:1px solid var(--line)}
+.famt input{width:62px;min-height:36px;padding:4px 6px;text-align:right}
+.famt em{font-style:normal;font-size:12px;color:var(--muted);min-width:1.2em}
+.fk b{font-size:15px}
 .fk{text-align:right;font-weight:600;white-space:nowrap}
 .frow .chipx{border:0;background:transparent;color:var(--muted);width:36px;font-size:14px;border-left:1px solid var(--line);cursor:pointer}
 .picker:empty{display:none}
@@ -450,17 +454,19 @@ var DEFAULT_TOKEN = '';
   var foodQ='';
   var WIDE=window.matchMedia('(min-width: 980px)');
   function isWide(){return WIDE.matches;}
+  function r2(v){return Math.round(v*100)/100;}
   function foodListInner(){
     var q=foodQ.trim().toLowerCase();
     var arr=S.myFoods.filter(function(f){return !q||(String(f.name||'')+' '+String(f.brand||'')).toLowerCase().indexOf(q)>=0;});
     if(!arr.length)return '<div class="empty" style="padding:12px 0">沒有符合的食物</div>';
     return arr.map(function(f){
-      return '<div class="frow"><button class="fmain" data-quick="my:'+f.id+'"><span class="fn">'+esc(foodName(f))+(f.brand?'<small>'+esc(f.brand)+'</small>':'')+'</span><span class="fk">'+r0(f.kcal)+'<small>蛋白 '+r1(f.p)+'g</small></span></button><button class="chipx" data-editmy="'+f.id+'" aria-label="編輯 '+esc(f.name)+'">✎</button><button class="chipx" data-rmmy="'+f.id+'" aria-label="刪除 '+esc(f.name)+'">✕</button></div>';
+      var base=num(f.amount)>0?num(f.amount):1;
+      return '<div class="frow"><button class="fmain" data-quick="my:'+f.id+'"><span class="fn">'+esc(f.name)+(f.brand?'<small>'+esc(f.brand)+'</small>':'')+'</span><span class="fk"><b>'+r0(f.kcal)+'</b><small>kcal</small></span></button><span class="famt"><input type="number" inputmode="decimal" step="any" min="0" data-amt="'+f.id+'" value="'+r2(base)+'" aria-label="數量"><em>'+esc(f.unit||'份')+'</em></span><button class="chipx" data-editmy="'+f.id+'" aria-label="編輯 '+esc(f.name)+'">✎</button><button class="chipx" data-rmmy="'+f.id+'" aria-label="刪除 '+esc(f.name)+'">✕</button></div>';
     }).join('');
   }
   function panelHtml(m){
     var h='<div class="panel">';
-    h+='<div class="row"><div class="field" style="max-width:140px"><label for="pServ">份數（點選食物時套用）</label><input id="pServ" type="number" inputmode="decimal" step="0.5" min="0.5" value="'+servings+'"></div></div>';
+    h+='<div class="row"><div class="field" style="max-width:140px"><label for="pServ">常用食物份數</label><input id="pServ" type="number" inputmode="decimal" step="0.5" min="0.5" value="'+servings+'"></div></div>';
     h+='<div class="grp">我的食物（'+S.myFoods.length+'）</div>';
     if(S.myFoods.length){
       h+='<input id="pSearch" class="fsearch" type="search" placeholder="搜尋食物或品牌" autocomplete="off" value="'+esc(foodQ)+'"><div class="flist" id="flist">'+foodListInner()+'</div>';
@@ -499,10 +505,10 @@ var DEFAULT_TOKEN = '';
     }else pk.innerHTML='';
   }
   (WIDE.addEventListener?WIDE.addEventListener('change',function(){renderMeals();}):WIDE.addListener(function(){renderMeals();}));
-  function addFood(name,n,meal,mult){
+  function addFood(name,n,meal,mult,raw){
     var arr=S.foods[curDate]||(S.foods[curDate]=[]);
     var label=name||'未命名';
-    if(mult!==1)label+=' ×'+mult;
+    if(!raw&&mult!==1)label+=' ×'+mult;
     arr.push({id:Date.now()+''+Math.floor(Math.random()*1000),name:label,brand:n.brand||'',meal:meal,
       kcal:n.kcal*mult,p:(n.p||0)*mult,c:(n.c||0)*mult,f:(n.f||0)*mult,
       sugar:(n.sugar||0)*mult,fiber:(n.fiber||0)*mult,sat:(n.sat||0)*mult,trans:(n.trans||0)*mult,na:(n.na||0)*mult});
@@ -523,6 +529,11 @@ var DEFAULT_TOKEN = '';
 
   function on2(t,fn){$('meals').addEventListener(t,fn);$('picker').addEventListener(t,fn);}
   on2('input',function(e){
+    if(e.target.dataset&&e.target.dataset.amt){
+      var ff=S.myFoods.filter(function(x){return x.id===e.target.dataset.amt;})[0],row=e.target.closest('.frow');
+      if(ff&&row){var bb=num(ff.amount)>0?num(ff.amount):1,vv=num(e.target.value,0);row.querySelector('.fk b').textContent=r0(ff.kcal*vv/bb);}
+      return;
+    }
     if(e.target.id==='pSearch'){foodQ=e.target.value;var fl=$('flist');if(fl)fl.innerHTML=foodListInner();return;}
     if(e.target.id==='pServ'){var v=num(e.target.value,1);if(v>0)servings=v;}
     else if(/^p(Name|Brand|Amt|UnitC|Kcal|P|C|F|Sugar|Fiber|Sat|Trans|Na)$/.test(e.target.id))readDraft();
@@ -548,7 +559,12 @@ var DEFAULT_TOKEN = '';
     }
     if(t.dataset.quick){
       var mult=readServ(),parts=t.dataset.quick.split(':'),f;
-      if(parts[0]==='my'){f=S.myFoods.filter(function(x){return x.id===parts[1];})[0];if(!f)return;addFood(foodName(f),f,openMeal,mult);}
+      if(parts[0]==='my'){
+        f=S.myFoods.filter(function(x){return x.id===parts[1];})[0];if(!f)return;
+        var ai=t.closest('.frow').querySelector('[data-amt]'),base=num(f.amount)>0?num(f.amount):1,av=ai?num(ai.value,base):base;
+        if(!(av>0)){av=base;}
+        addFood(f.name+' '+r2(av)+(f.unit||'份'),f,openMeal,av/base,true);
+      }
       else{var p=PRESETS[+parts[1]];addFood(p[0],{kcal:p[1],p:p[2],c:p[3],f:p[4]},openMeal,mult);}
       renderToday();return;
     }
