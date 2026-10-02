@@ -367,11 +367,12 @@ nav button.on{color:var(--primary);font-weight:700}
     var C=2*Math.PI*62, pct=Math.max(0,Math.min(1,e.k/T.kcal)), off=C*(1-pct);
     var h='';
     if(!S.profile.saved)h+='<div class="hint">目前使用預設身體資料。先到「目標」填入你的資料，目標熱量會更準。</div>';
-    var defi=T.tdee-e.k, defOver=defi<0, pct2=Math.max(0,Math.min(1,e.k/T.tdee));
+    var tdeeDay=T.bmr+burned;
+    var defi=tdeeDay-e.k, defOver=defi<0, pct2=Math.max(0,Math.min(1,e.k/tdeeDay));
     h+='<div class="rings">'+
        ringHtml(pct,over,Math.abs(r0(remain)),over?'kcal 已超過目標':'kcal 還能吃','目標 '+r0(T.kcal))+
-       ringHtml(pct2,defOver,Math.abs(r0(defi)),defOver?'kcal 熱量盈餘':'kcal 熱量赤字','TDEE '+r0(T.tdee)+' − 已吃')+'</div>'+
-       '<div class="stats"><div><span>目標</span><b>'+r0(T.kcal)+'</b></div><div><span>已吃</span><b>'+r0(e.k)+'</b></div><div><span>運動消耗</span><b>'+r0(burned)+'</b></div><div><span>基礎代謝 BMR</span><b>'+r0(T.bmr)+'</b></div><div><span>TDEE</span><b>'+r0(T.tdee)+'</b></div></div>';
+       ringHtml(pct2,defOver,Math.abs(r0(defi)),defOver?'kcal 熱量盈餘':'kcal 熱量赤字','TDEE '+r0(tdeeDay)+'（BMR＋運動）− 已吃')+'</div>'+
+       '<div class="stats"><div><span>目標</span><b>'+r0(T.kcal)+'</b></div><div><span>已吃</span><b>'+r0(e.k)+'</b></div><div><span>運動消耗</span><b>'+r0(burned)+'</b></div><div><span>基礎代謝 BMR</span><b>'+r0(T.bmr)+'</b></div><div><span>TDEE（BMR＋運動）</span><b>'+r0(tdeeDay)+'</b></div></div>';
     h+=macroBar('蛋白質',e.p,T.protein,'var(--pro)')+macroBar('碳水',e.c,T.carb,'var(--carb)')+macroBar('脂肪',e.f,T.fat,'var(--fat)')+macroBar('鈉',e.na,T.na,'var(--muted)','mg')+'<p class="note">糖 '+r1(e.su)+' g・膳食纖維 '+r1(e.fi)+' g・飽和脂肪 '+r1(e.sa)+' g・反式脂肪 '+r1(e.tr)+' g</p>';
     $('summary').innerHTML=h;
     renderMeals();
@@ -714,12 +715,12 @@ nav button.on{color:var(--primary);font-weight:700}
     var h='<h2>你的每日目標</h2><div class="result-big">'+
       '<div class="kv main"><small>目標熱量（每日）</small><b>'+r0(T.kcal)+' kcal</b></div>'+
       '<div class="kv"><small>基礎代謝 BMR'+(num(p.bmrOverride)>0?'（自填）':'（公式）')+'</small><b>'+r0(T.bmr)+'</b></div>'+
-      '<div class="kv"><small>每日消耗 TDEE</small><b>'+r0(T.tdee)+'</b></div></div>'+
+      '<div class="kv"><small>預估消耗（BMR×活動量）</small><b>'+r0(T.tdee)+'</b></div></div>'+
       '<div class="result-big" style="grid-template-columns:1fr 1fr 1fr">'+
       '<div class="kv"><small>蛋白質</small><b>'+r0(T.protein)+' g</b></div>'+
       '<div class="kv"><small>碳水</small><b>'+r0(T.carb)+' g</b></div>'+
       '<div class="kv"><small>脂肪</small><b>'+r0(T.fat)+' g</b></div></div>'+
-      (num(p.bmrOverride)>0?'<p class="note" style="margin-top:0">公式估算的 BMR 為 '+r0(T.bmrF)+' kcal，目前以你填的數字計算。</p>':'')+'<p class="note" style="margin-top:0">與 TDEE 相差 '+(diff>=0?'+':'')+r0(diff)+' kcal。以此速度，每週體重約變化 '+r1(diff*7/7700)+' kg。</p>';
+      (num(p.bmrOverride)>0?'<p class="note" style="margin-top:0">公式估算的 BMR 為 '+r0(T.bmrF)+' kcal，目前以你填的數字計算。</p>':'')+'<p class="note" style="margin-top:0">與預估消耗相差 '+(diff>=0?'+':'')+r0(diff)+' kcal。今日頁面的 TDEE 是 BMR 加上當天實際運動消耗，這裡的預估消耗只用來推算預設目標熱量（你直接填目標熱量就不會用到）。以此速度，每週體重約變化 '+r1(diff*7/7700)+' kg。</p>';
     var msum=T.protein*4+T.carb*4+T.fat*9;
     if(Math.abs(msum-T.kcal)>60)h+='<div class="warn">三大營養素目標合計約 '+r0(msum)+' kcal，與目標熱量 '+r0(T.kcal)+' 相差 '+r0(msum-T.kcal)+' kcal。可調整其中一項讓兩者接近。</div>';
     if(T.kcal<T.bmr)h+='<div class="warn">目標熱量低於基礎代謝，不建議長期這樣吃。可降低赤字比例，或增加活動量。</div>';
