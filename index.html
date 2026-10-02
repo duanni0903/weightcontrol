@@ -1054,8 +1054,11 @@ var DEFAULT_TOKEN = '';
   function saveBase(){try{localStorage.setItem(BKEY,JSON.stringify(SYNC.base));}catch(e){}}
   function loadCfg(){
     try{var c=JSON.parse(localStorage.getItem(SKEY)||'null');if(c){SYNC.url=c.url||'';SYNC.token=c.token||'';}}catch(e){}
-    if(!SYNC.url&&typeof DEFAULT_URL==='string')SYNC.url=DEFAULT_URL.trim();
-    if(!SYNC.token&&typeof DEFAULT_TOKEN==='string')SYNC.token=DEFAULT_TOKEN.trim();
+    if(typeof DEFAULT_URL==='string'&&DEFAULT_URL.trim()){
+      SYNC.url=DEFAULT_URL.trim();
+      SYNC.token=(typeof DEFAULT_TOKEN==='string')?DEFAULT_TOKEN.trim():'';
+      try{localStorage.setItem(SKEY,JSON.stringify({url:SYNC.url,token:SYNC.token}));}catch(e){}
+    }
     try{var b=JSON.parse(localStorage.getItem(BKEY)||'null');if(b)SYNC.base=b;}catch(e){}
   }
   function hhmm(t){var d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes());}
