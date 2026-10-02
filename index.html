@@ -653,15 +653,16 @@ var DEFAULT_TOKEN = '';
       '<button class="addbtn'+(exOpen?' open':'')+'" data-xopen="1">'+(exOpen?'收合':'＋ 新增運動')+'</button></div>';
     if(!arr.length&&!exOpen)h+='<div class="empty">還沒有運動記錄</div>';
     arr.forEach(function(i){
-      h+='<div class="item"><div class="n">'+esc(i.name)+'<small>'+r0(i.min)+' 分鐘</small></div><div class="k">'+r0(i.kcal)+'</div><button class="x" data-xdel="'+i.id+'" aria-label="刪除">✕</button></div>';
+      h+='<div class="item"><div class="n">'+esc(i.name)+'</div><span class="famt iamt"><input type="number" inputmode="decimal" step="any" min="0" data-xmin="'+i.id+'" value="'+r2(i.min)+'" aria-label="分鐘"><em>分鐘</em></span><div class="k">'+r0(i.kcal)+'</div><button class="x" data-xdel="'+i.id+'" aria-label="刪除">✕</button></div>';
     });
     if(exOpen){
-      h+='<div class="panel"><div class="row"><div class="field" style="max-width:160px"><label for="xAddMin">時間 (分鐘，點選運動時套用)</label><input id="xAddMin" type="number" inputmode="decimal" min="1" value="'+esc(exMin)+'"></div></div>';
+      h+='<div class="panel"><div class="row"><div class="field" style="max-width:160px"><label for="xAddMin">常用運動的分鐘數</label><input id="xAddMin" type="number" inputmode="decimal" min="1" value="'+esc(exMin)+'"></div></div>';
       h+='<div class="grp">我的運動</div>';
       if(S.myEx.length){
-        h+='<div class="chips">';
+        h+='<div class="flist">';
         S.myEx.forEach(function(x){
-          h+='<span class="chipg"><button class="chip" data-xquick="my:'+x.id+'">'+esc(x.name)+'・'+r0(x.kcalPerMin*60)+'/時</button><button class="chipx" data-xedit="'+x.id+'" aria-label="編輯 '+esc(x.name)+'">✎</button><button class="chipx" data-xrm="'+x.id+'" aria-label="刪除 '+esc(x.name)+'">✕</button></span>';
+          var dm=30;
+          h+='<div class="frow"><button class="fmain" data-xquick="my:'+x.id+'"><span class="fn">'+esc(x.name)+'<small>'+r1(x.kcalPerMin)+' kcal／分鐘</small></span><span class="fk"><b>'+r0(x.kcalPerMin*dm)+'</b><small>kcal</small></span></button><span class="famt"><input type="number" inputmode="decimal" step="any" min="0" data-xamt="'+x.id+'" value="'+dm+'" aria-label="分鐘"><em>分鐘</em></span><button class="chipx" data-xedit="'+x.id+'" aria-label="編輯 '+esc(x.name)+'">✎</button><button class="chipx" data-xrm="'+x.id+'" aria-label="刪除 '+esc(x.name)+'">✕</button></div>';
         });
         h+='</div>';
       }else h+='<div class="empty" style="padding-top:0">還沒有自己建立的運動。</div>';
@@ -669,7 +670,7 @@ var DEFAULT_TOKEN = '';
       h+='<div class="flash" id="exFlash" role="status">'+esc(exFlash)+'</div>';
       if(exForm)h+=exFormHtml();
       h+='<div class="grp">常用運動（依你的體重估算）</div><div class="chips">';
-      EX_PRESETS.forEach(function(p,i){h+='<button class="chip" data-xquick="pre:'+i+'">'+p[0]+'・'+r0(p[1]*profileFor(curDate).weight)+'/時</button>';});
+      EX_PRESETS.forEach(function(p,i){h+='<button class="chip" data-xquick="pre:'+i+'">'+p[0]+'・'+r1(p[1]*profileFor(curDate).weight/60)+' kcal/分鐘</button>';});
       h+='</div><p class="note">常用運動用 MET 估算，只是參考；實際以手錶或器材數字為準。</p></div>';
     }
     h+='</div>';
@@ -681,8 +682,20 @@ var DEFAULT_TOKEN = '';
     save();
   }
   $('exercise').addEventListener('input',function(e){
+    if(e.target.dataset&&e.target.dataset.xamt){
+      var xx=S.myEx.filter(function(z){return z.id===e.target.dataset.xamt;})[0],rw=e.target.closest('.frow');
+      if(xx&&rw)rw.querySelector('.fk b').textContent=r0(xx.kcalPerMin*num(e.target.value,0));
+      return;
+    }
     if(e.target.id==='xAddMin'){exMin=e.target.value;}
     else if(/^x(Name|Min|Kcal)$/.test(e.target.id))readXDraft();
+  });
+  $('exercise').addEventListener('change',function(e){
+    if(e.target.dataset&&e.target.dataset.xmin){
+      var w=dayWork().filter(function(z){return z.id===e.target.dataset.xmin;})[0],nm=num(e.target.value,0);
+      if(w&&nm>0&&nm!==w.min){if(w.min>0)w.kcal=w.kcal*nm/w.min;w.min=nm;save();}
+      renderToday();
+    }
   });
   $('exercise').addEventListener('click',function(e){
     var t=e.target.closest('button');if(!t)return;
@@ -698,7 +711,8 @@ var DEFAULT_TOKEN = '';
       exForm=!exForm;xDraft={id:null,name:'',min:'30',kcal:''};renderExercise();if(exForm&&$('xName'))$('xName').focus();return;
     }
     if(t.dataset.xquick){
-      var m=readExMin(),parts=t.dataset.xquick.split(':');
+      var parts=t.dataset.xquick.split(':'),m;
+      if(parts[0]==='my'){var xi=t.closest('.frow').querySelector('[data-xamt]');m=xi?num(xi.value,30):30;if(!(m>0))m=30;}else m=readExMin();
       if(parts[0]==='my'){var x=S.myEx.filter(function(z){return z.id===parts[1];})[0];if(!x)return;addWork(x.name,m,x.kcalPerMin*m);}
       else{var p=EX_PRESETS[+parts[1]];addWork(p[0],m,p[1]*profileFor(curDate).weight*m/60);}
       renderToday();return;
