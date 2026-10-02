@@ -222,7 +222,7 @@ nav button.on{color:var(--primary);font-weight:700}
       <h2>Google 試算表同步</h2>
       <p class="sub">資料存在你自己的 Google 試算表。網址與 TOKEN 只保存在這台裝置的瀏覽器。</p>
       <div class="field"><label for="syUrl">Apps Script 網頁應用程式網址</label><input id="syUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"></div>
-      <div class="field"><label for="syToken">TOKEN 密碼</label><input id="syToken" type="password" autocomplete="off"></div>
+      <div class="field"><label for="syToken">TOKEN 密碼（選填，後端沒設密碼時留空）</label><input id="syToken" type="password" autocomplete="off"></div>
       <div class="btnrow"><button class="btn" id="syConnect" type="button">儲存並同步</button><button class="btn ghost" id="syNow" type="button">立即同步</button></div>
       <p class="note" id="syStatus"></p>
     </div>
@@ -254,6 +254,13 @@ nav button.on{color:var(--primary);font-weight:700}
   <button data-tab="sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8.5a4.5 4.5 0 0 1 .5 9.5H7z"/></svg>同步</button>
 </nav>
 
+<script>
+// ===== 內建同步設定（填在這裡，所有裝置打開就自動連線）=====
+// DEFAULT_URL：Apps Script 網頁應用程式網址（結尾 /exec）
+// DEFAULT_TOKEN：後端密碼。目前後端未啟用密碼，留空 '' 即可。
+var DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbyRvaYP2vFWeKaNfASPffLraYn4lOJLDAIiqcgLAPraucrXT6KRzoQp3U24TEjiZLzc/exec';
+var DEFAULT_TOKEN = '';
+</script>
 <script>
 (function(){
   var KEY='kcal-app-v1';
@@ -867,7 +874,7 @@ nav button.on{color:var(--primary);font-weight:700}
   };
   var UMAP={'克':'g','公克':'g','g':'g','G':'g','公斤':'kg','kg':'kg','毫升':'ml','ml':'ml','公升':'l','l':'l','L':'l'};
   function mapUnit(u){u=String(u==null?'':u).trim();return UMAP[u]||u;}
-  function cfgOk(){return !!(SYNC.url&&SYNC.token);}
+  function cfgOk(){return !!SYNC.url;}
   function nv(v){if(v===null||v===undefined)return '';if(typeof v==='number')return String(Math.round(v*100)/100);return String(v).trim();}
   function rs(n,r){return JSON.stringify(SHEETS[n].map(function(h){return nv(r[h]);}));}
   function ck(n,r){
@@ -966,7 +973,7 @@ nav button.on{color:var(--primary);font-weight:700}
     return ops;
   }
   function apiGet(){
-    var u=SYNC.url+(SYNC.url.indexOf('?')>=0?'&':'?')+'token='+encodeURIComponent(SYNC.token)+'&_='+Date.now();
+    var u=SYNC.url+(SYNC.url.indexOf('?')>=0?'&':'?')+(SYNC.token?'token='+encodeURIComponent(SYNC.token)+'&':'')+'_='+Date.now();
     return fetch(u,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){if(!j.ok)throw new Error(j.error||'讀取失敗');return j.data;});
   }
   function apiPost(ops){
@@ -977,6 +984,8 @@ nav button.on{color:var(--primary);font-weight:700}
   function saveBase(){try{localStorage.setItem(BKEY,JSON.stringify(SYNC.base));}catch(e){}}
   function loadCfg(){
     try{var c=JSON.parse(localStorage.getItem(SKEY)||'null');if(c){SYNC.url=c.url||'';SYNC.token=c.token||'';}}catch(e){}
+    if(!SYNC.url&&typeof DEFAULT_URL==='string')SYNC.url=DEFAULT_URL.trim();
+    if(!SYNC.token&&typeof DEFAULT_TOKEN==='string')SYNC.token=DEFAULT_TOKEN.trim();
     try{var b=JSON.parse(localStorage.getItem(BKEY)||'null');if(b)SYNC.base=b;}catch(e){}
   }
   function hhmm(t){var d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes());}
@@ -1034,7 +1043,7 @@ nav button.on{color:var(--primary);font-weight:700}
     $('syncPill').onclick=function(){showTab('sync');};
     $('syConnect').onclick=function(){
       var u=$('syUrl').value.trim(),t=$('syToken').value.trim();
-      if(!/^https:\/\/script\.google\.com\//.test(u)||!t){setStatus('error','請填入完整的網址與 TOKEN');return;}
+      if(!/^https:\/\/script\.google\.com\//.test(u)){setStatus('error','請填入完整的 Apps Script 網址');return;}
       SYNC.url=u;SYNC.token=t;
       try{localStorage.setItem(SKEY,JSON.stringify({url:u,token:t}));}catch(e){}
       pullMerge();
