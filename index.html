@@ -1071,7 +1071,7 @@ var DEFAULT_TOKEN = '';
   function refreshAll(){renderToday();syncGoalInputs();renderGoal();renderProgress();}
   function scheduleSync(){
     if(!SYNC.ready||!cfgOk())return;
-    setStatus('pending');clearTimeout(SYNC.timer);SYNC.timer=setTimeout(push,1500);
+    setStatus('pending');clearTimeout(SYNC.timer);SYNC.timer=setTimeout(push,400);
   }
   async function push(){
     if(!cfgOk())return;
