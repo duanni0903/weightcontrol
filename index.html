@@ -1,9 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>熱量計算器</title>
+<html lang="zh-Hant"><head><title>熱量計算器</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -144,11 +140,32 @@ nav button.on{color:var(--primary);font-weight:700}
 .chart{width:100%;height:auto;display:block}
 .chart text{fill:var(--muted);font-size:10px}
 .wrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:15px}
+.fsearch{width:100%;margin-bottom:8px}
+.flist{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.frow{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+.frow:last-child{border-bottom:0}
+.fmain{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;border:0;background:transparent;color:inherit;padding:8px 10px;min-height:44px;font:inherit;cursor:pointer}
+.fmain:hover{background:var(--bg)}
+.fn{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+.fn small,.fk small{display:block;font-size:11px;color:var(--muted)}
+.fk{text-align:right;font-weight:600;white-space:nowrap}
+.frow .chipx{border:0;background:transparent;color:var(--muted);width:36px;font-size:14px;border-left:1px solid var(--line);cursor:pointer}
+.picker:empty{display:none}
+.picker .ph{display:flex;justify-content:space-between;align-items:center}
+.picker .ph h3{margin:0;font-size:16px}
+@media (min-width:980px){
+main{max-width:1040px}
+#tab-goal,#tab-progress,#tab-sync{max-width:560px;margin:0 auto}
+#tab-today.active{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:0 20px;align-items:start}
+#tab-today>*{grid-column:1}
+#tab-today>#picker{display:block;grid-column:2;grid-row:1/span 20;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;background:var(--surface,var(--bg));border:1px solid var(--line);border-radius:14px;padding:16px}
+#tab-today>#picker:empty{display:none}
+.picker .panel{border-top:0;margin:0;padding:0}
+.flist{max-height:none}
+}
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
 </style>
-</head>
-<body>
-<main>
+</head><body><main>
   <div class="top"><h1>熱量計算器</h1><button id="syncPill" class="pill" type="button">雲端：未設定</button></div>
   <p class="sub">算出每日目標，記錄飲食，追蹤體重</p>
 
@@ -165,6 +182,7 @@ nav button.on{color:var(--primary);font-weight:700}
     <div id="exercise"></div>
     <div id="weightcard"></div>
     <div id="watercard"></div>
+    <div id="picker" class="picker"></div>
   </section>
 
   <section id="tab-goal">
@@ -253,16 +271,11 @@ nav button.on{color:var(--primary);font-weight:700}
   <button data-tab="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg>進度</button>
   <button data-tab="sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8.5a4.5 4.5 0 0 1 .5 9.5H7z"/></svg>同步</button>
 </nav>
-
 <script>
-// ===== 內建同步設定（填在這裡，所有裝置打開就自動連線）=====
-// DEFAULT_URL：Apps Script 網頁應用程式網址（結尾 /exec）
-// DEFAULT_TOKEN：後端密碼。目前後端未啟用密碼，留空 '' 即可。
 var DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbyRvaYP2vFWeKaNfASPffLraYn4lOJLDAIiqcgLAPraucrXT6KRzoQp3U24TEjiZLzc/exec';
 var DEFAULT_TOKEN = '';
 </script>
-<script>
-(function(){
+<script>(function(){
   var KEY='kcal-app-v1';
   var DEF={mealB:'',mealL:'',mealD:'',naTarget:2300,kcalOverride:'',proOverride:'',fatOverride:'',carbOverride:'',bmrOverride:'',addBack:false,sex:'m',age:30,height:170,weight:70,act:1.375,goal:'cut',pct:20,ppk:2.0,fatPct:25,saved:false};
   var S={profile:Object.assign({},DEF),foods:{},weights:[],myFoods:[],workouts:{},myEx:[],pHist:[],water:{}};
@@ -434,16 +447,23 @@ var DEFAULT_TOKEN = '';
       '<p class="note">以下熱量與營養素，請填上面「數量＋單位」的量，例如 1 碗，或 100 g。熱量留空時，會用三大營養素換算（蛋白質、碳水 4 kcal/g，脂肪 9 kcal/g）。建立後會出現在「我的食物」，之後一鍵加入。</p></div>';
     return h;
   }
+  var foodQ='';
+  var WIDE=window.matchMedia('(min-width: 980px)');
+  function isWide(){return WIDE.matches;}
+  function foodListInner(){
+    var q=foodQ.trim().toLowerCase();
+    var arr=S.myFoods.filter(function(f){return !q||(String(f.name||'')+' '+String(f.brand||'')).toLowerCase().indexOf(q)>=0;});
+    if(!arr.length)return '<div class="empty" style="padding:12px 0">沒有符合的食物</div>';
+    return arr.map(function(f){
+      return '<div class="frow"><button class="fmain" data-quick="my:'+f.id+'"><span class="fn">'+esc(foodName(f))+(f.brand?'<small>'+esc(f.brand)+'</small>':'')+'</span><span class="fk">'+r0(f.kcal)+'<small>蛋白 '+r1(f.p)+'g</small></span></button><button class="chipx" data-editmy="'+f.id+'" aria-label="編輯 '+esc(f.name)+'">✎</button><button class="chipx" data-rmmy="'+f.id+'" aria-label="刪除 '+esc(f.name)+'">✕</button></div>';
+    }).join('');
+  }
   function panelHtml(m){
     var h='<div class="panel">';
     h+='<div class="row"><div class="field" style="max-width:140px"><label for="pServ">份數（點選食物時套用）</label><input id="pServ" type="number" inputmode="decimal" step="0.5" min="0.5" value="'+servings+'"></div></div>';
-    h+='<div class="grp">我的食物</div>';
+    h+='<div class="grp">我的食物（'+S.myFoods.length+'）</div>';
     if(S.myFoods.length){
-      h+='<div class="chips">';
-      S.myFoods.forEach(function(f){
-        h+='<span class="chipg"><button class="chip" title="'+esc(f.brand||'')+'" data-quick="my:'+f.id+'">'+esc(foodName(f))+'・'+r0(f.kcal)+'</button><button class="chipx" data-editmy="'+f.id+'" aria-label="編輯 '+esc(f.name)+'">✎</button><button class="chipx" data-rmmy="'+f.id+'" aria-label="刪除 '+esc(f.name)+'">✕</button></span>';
-      });
-      h+='</div>';
+      h+='<input id="pSearch" class="fsearch" type="search" placeholder="搜尋食物或品牌" autocomplete="off" value="'+esc(foodQ)+'"><div class="flist" id="flist">'+foodListInner()+'</div>';
     }else h+='<div class="empty" style="padding-top:0">還沒有自己建立的食物。</div>';
     h+='<div style="margin-top:10px"><button class="btn ghost" data-newfood="1">'+(showForm?'收起表單':'＋ 建立新食物')+'</button></div>';
     h+='<div class="flash" id="flash" role="status">'+esc(flash)+'</div>';
@@ -468,12 +488,17 @@ var DEFAULT_TOKEN = '';
       arr.forEach(function(i){
         h+='<div class="item"><div class="n">'+esc(i.name)+'<small>'+(i.brand?esc(i.brand)+'・':'')+'蛋白 '+r1(i.p)+'g・碳水 '+r1(i.c)+'g・脂肪 '+r1(i.f)+'g'+(i.na?'・鈉 '+r0(i.na)+'mg':'')+'</small></div><div class="k">'+r0(i.kcal)+'</div><button class="x" data-del="'+i.id+'" aria-label="刪除">✕</button></div>';
       });
-      if(isOpen)h+=panelHtml(m);
+      if(isOpen&&!isWide())h+=panelHtml(m);
       h+='</div>';
     });
     h+='</div>';
     $('meals').innerHTML=h;
+    var pk=$('picker');
+    if(isWide()){
+      pk.innerHTML=openMeal?'<div class="ph"><h3>加入'+openMeal+'</h3><button class="addbtn open" data-open="'+openMeal+'">關閉</button></div>'+panelHtml(openMeal):'<div class="empty">點左側餐別的「＋ 新增食物」，<br>我的食物會顯示在這裡。</div>';
+    }else pk.innerHTML='';
   }
+  (WIDE.addEventListener?WIDE.addEventListener('change',function(){renderMeals();}):WIDE.addListener(function(){renderMeals();}));
   function addFood(name,n,meal,mult){
     var arr=S.foods[curDate]||(S.foods[curDate]=[]);
     var label=name||'未命名';
@@ -496,14 +521,16 @@ var DEFAULT_TOKEN = '';
     flashTimer=setTimeout(function(){flash='';var el=$('flash');if(el)el.textContent='';},3000);
   }
 
-  $('meals').addEventListener('input',function(e){
+  function on2(t,fn){$('meals').addEventListener(t,fn);$('picker').addEventListener(t,fn);}
+  on2('input',function(e){
+    if(e.target.id==='pSearch'){foodQ=e.target.value;var fl=$('flist');if(fl)fl.innerHTML=foodListInner();return;}
     if(e.target.id==='pServ'){var v=num(e.target.value,1);if(v>0)servings=v;}
     else if(/^p(Name|Brand|Amt|UnitC|Kcal|P|C|F|Sugar|Fiber|Sat|Trans|Na)$/.test(e.target.id))readDraft();
   });
-  $('meals').addEventListener('change',function(e){
+  on2('change',function(e){
     if(e.target.id==='pUnit'){readDraft();renderMeals();var el=$(draft.unit===OTHER?'pUnitC':'pUnit');if(el)el.focus();}
   });
-  $('meals').addEventListener('click',function(e){
+  on2('click',function(e){
     var t=e.target.closest('button');if(!t)return;
     if(t.dataset.open){openMeal=(openMeal===t.dataset.open)?null:t.dataset.open;showForm=false;resetDraft();renderMeals();return;}
     if(t.dataset.del){S.foods[curDate]=dayItems().filter(function(i){return i.id!==t.dataset.del;});save();renderToday();return;}
@@ -1074,7 +1101,4 @@ var DEFAULT_TOKEN = '';
   renderToday();
   initSync();
 })();
-
-</script>
-</body>
-</html>
+</script></body></html>
