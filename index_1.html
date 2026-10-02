@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>熱量計算器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9efee; --surface:#ffffff; --ink:#15262b; --muted:#5d7176; --line:#d3dedd;
+  --primary:#0e5a5a; --primary-ink:#ffffff; --track:#d6e2e0;
+  --pro:#2f6fdb; --carb:#e0a21b; --fat:#c4513b; --over:#c4513b; --ok:#0e5a5a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1b1e; --surface:#172a2e; --ink:#e6f0ef; --muted:#92a9ad; --line:#26413f;
+    --primary:#4fc1b4; --primary-ink:#06201d; --track:#26413f;
+    --pro:#6fa2ff; --carb:#f0bb45; --fat:#ee7d67; --over:#ee7d67; --ok:#4fc1b4;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1b1e; --surface:#172a2e; --ink:#e6f0ef; --muted:#92a9ad; --line:#26413f;
+  --primary:#4fc1b4; --primary-ink:#06201d; --track:#26413f;
+  --pro:#6fa2ff; --carb:#f0bb45; --fat:#ee7d67; --over:#ee7d67; --ok:#4fc1b4;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;font-size:16px;line-height:1.55;padding-bottom:84px}
+main{max-width:560px;margin:0 auto;padding:16px 16px 0}
+h1{font-size:22px;margin:4px 0 0;font-weight:700}
+h2{font-size:17px;margin:0 0 12px;font-weight:700}
+.sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+section{display:none}
+section.active{display:block}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.row{display:flex;gap:10px}
+.row>*{flex:1;min-width:0}
+label{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
+input,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 11px;min-height:44px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.field{margin-bottom:12px}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--primary);color:var(--primary-ink);border:0;border-radius:9px;padding:11px 16px;font-weight:700;min-height:44px;width:100%}
+.btn.ghost{background:transparent;color:var(--primary);border:1px solid var(--primary)}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.btnrow .btn{flex:1 1 140px;width:auto}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--bg);color:var(--ink);padding:10px;min-height:44px}
+.seg button.on{background:var(--primary);color:var(--primary-ink);font-weight:700}
+.datebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.datebar button{background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:9px;width:44px;height:44px;font-size:20px}
+.datebar .d{font-weight:700;text-align:center}
+.datebar .d small{display:block;color:var(--muted);font-weight:400;font-size:13px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 7px;background:var(--surface);border:1px solid var(--line);border-radius:10px;color:var(--ink);min-height:62px;min-width:0}
+.wd small{font-size:12px;color:var(--muted)}
+.wd b{font-size:16px;line-height:1.2}
+.wd i{display:block;width:70%;height:4px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:3px}
+.wd i u{display:block;height:100%;text-decoration:none;background:var(--ok)}
+.wd i u.over{background:var(--over)}
+.wd.sel{background:var(--primary);color:var(--primary-ink);border-color:var(--primary)}
+.wd.sel small{color:inherit;opacity:.85}
+.wd.sel i{background:color-mix(in srgb,var(--primary-ink) 30%,transparent)}
+.wd.sel i u{background:var(--primary-ink)}
+.wd.today b{text-decoration:underline;text-underline-offset:3px}
+.wd:disabled{opacity:.4;cursor:default}
+.ringwrap{display:flex;align-items:center;gap:18px}
+.rings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.ringcol{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.rsub{font-size:12px;color:var(--muted);text-align:center}
+.ring{width:100%;max-width:150px;aspect-ratio:1;position:relative}
+.ring .num{font-size:28px}
+.ring .lab{font-size:12px;padding:0 10px}
+.stats{margin-top:4px}
+
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring .num{font-size:28px;font-weight:700;line-height:1.1}
+.ring .lab{font-size:12px;color:var(--muted);padding:0 10px}
+.ring .num.over{color:var(--over)}
+.stats{flex:1;font-size:14px}
+.stats div{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--line)}
+.stats div:last-child{border:0}
+.stats b{font-weight:700}
+.macro{margin-top:14px}
+.macro .t{display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px}
+.bar{height:8px;background:var(--track);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px}
+.hint{background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--muted);margin-bottom:14px}
+.gh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+.gh h2{margin:0}
+.gh span{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.meal{padding:14px 0 6px;border-top:1px solid var(--line)}
+.gh+.meal{border-top:0}
+.sec{font-size:14px;font-weight:700;color:var(--muted);margin:22px 2px 10px;letter-spacing:.04em}
+.mh{display:flex;align-items:center;gap:10px}
+.mh h3{font-size:17px;margin:0;font-weight:700}
+.mh .ms{color:var(--muted);font-size:14px;flex:1}
+.addbtn{background:var(--primary);color:var(--primary-ink);border:0;border-radius:9px;padding:0 14px;min-height:40px;font-weight:700;font-size:14px}
+.addbtn.open{background:transparent;color:var(--primary);border:1px solid var(--primary)}
+.item{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.mh+.item,.mh+.empty{margin-top:10px}
+.item .n{flex:1;min-width:0}
+.item .n small{display:block;color:var(--muted);font-size:12px}
+.item .k{font-weight:700;white-space:nowrap}
+.x{background:transparent;border:0;color:var(--muted);font-size:18px;width:36px;height:36px;border-radius:8px}
+.empty{color:var(--muted);font-size:14px;padding:8px 0 0}
+.panel{margin-top:12px;padding-top:12px;border-top:2px solid var(--line)}
+.panel .grp{font-size:13px;color:var(--muted);margin:10px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:14px;min-height:36px}
+.chipg{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:999px;overflow:hidden;max-width:100%}
+.chipg .chip{border:0;border-radius:0;background:transparent}
+.chipg .chipx{border:0;background:transparent;color:var(--muted);width:34px;min-height:36px;font-size:14px;border-left:1px solid var(--line)}
+.divider{font-size:13px;color:var(--muted);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pill{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:4px 12px;font-size:12px;min-height:32px;white-space:nowrap}
+.pill.ok{color:var(--ok)}
+.pill.err{color:var(--over)}
+.more{margin:2px 0 4px}
+.more summary{cursor:pointer;color:var(--primary);font-size:14px;padding:6px 0}
+.create{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
+.create h4{margin:0 0 10px;font-size:15px}
+.chk{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:14px;margin:12px 0 0}
+.chk input{width:20px;height:20px;min-height:0;flex:0 0 auto}
+.flash{color:var(--ok);font-size:14px;font-weight:700;margin:10px 0 0;min-height:1.2em}
+.result-big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kv{background:var(--bg);border-radius:10px;padding:10px 12px}
+.kv small{display:block;color:var(--muted);font-size:12px}
+.kv b{font-size:20px}
+.kv.main{grid-column:1/-1;background:var(--primary);color:var(--primary-ink)}
+.kv.main small{color:inherit;opacity:.85}
+.kv.main b{font-size:30px}
+.warn{background:color-mix(in srgb,var(--over) 14%,transparent);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px;margin-top:10px}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;border:0;background:transparent;color:var(--muted);padding:10px 4px;min-height:56px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--primary);font-weight:700}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-size:10px}
+.wrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:15px}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><h1>熱量計算器</h1><button id="syncPill" class="pill" type="button">雲端：未設定</button></div>
+  <p class="sub">算出每日目標，記錄飲食，追蹤體重</p>
+
+  <section id="tab-today" class="active">
+    <div class="datebar">
+      <button id="prevDay" aria-label="前一天">‹</button>
+      <div class="d" id="dateLabel"></div>
+      <button id="nextDay" aria-label="後一天">›</button>
+    </div>
+    <div id="weekbar" class="week" role="group" aria-label="本週"></div>
+    <div id="summary" class="card"></div>
+    <div id="meals"></div>
+    <h2 class="sec">運動、體重與喝水</h2>
+    <div id="exercise"></div>
+    <div id="weightcard"></div>
+    <div id="watercard"></div>
+  </section>
+
+  <section id="tab-goal">
+    <div class="card">
+      <h2>身體資料</h2>
+      <div class="field"><label>性別</label>
+        <div class="seg" id="sexSeg"><button data-v="m">男</button><button data-v="f">女</button></div></div>
+      <div class="row">
+        <div class="field"><label for="gAge">年齡</label><input id="gAge" type="number" inputmode="numeric" min="10" max="100"></div>
+        <div class="field"><label for="gH">身高 (cm)</label><input id="gH" type="number" inputmode="decimal" min="100" max="230"></div>
+        <div class="field"><label for="gW">體重 (kg)</label><input id="gW" type="number" inputmode="decimal" min="30" max="250"></div>
+      </div>
+      <div class="field"><label for="gAct">活動量</label>
+        <select id="gAct">
+          <option value="1.2">久坐（幾乎不運動）</option>
+          <option value="1.375">輕度（每週運動 1–3 天）</option>
+          <option value="1.55">中度（每週運動 3–5 天）</option>
+          <option value="1.725">高度（每週運動 6–7 天）</option>
+        </select></div>
+      <div class="field"><label for="gBmr">基礎代謝 BMR (kcal，選填)</label><input id="gBmr" type="number" inputmode="decimal" min="800" max="4000" placeholder="留空則用公式；可填 InBody 測得的數字"></div>
+      <button class="btn ghost" id="useLatest" hidden style="margin-bottom:12px"></button>
+      <div class="field"><label>目標</label>
+        <div class="seg" id="goalSeg"><button data-v="cut">減脂</button><button data-v="maintain">維持</button><button data-v="bulk">增肌</button></div></div>
+      <div class="row">
+        <div class="field"><label for="gPct" id="gPctLab">熱量調整 (%)</label><input id="gPct" type="number" inputmode="decimal" min="0" max="35"></div>
+        <div class="field"><label for="gPpk">蛋白質 (g/公斤體重)</label><input id="gPpk" type="number" inputmode="decimal" step="0.1" min="0.8" max="3"></div>
+        <div class="field"><label for="gFat">脂肪佔熱量 (%)</label><input id="gFat" type="number" inputmode="decimal" min="15" max="45"></div>
+      </div>
+      <div class="divider">直接指定目標（選填，留空則自動計算）</div>
+      <div class="row">
+        <div class="field"><label for="gKcal">目標熱量 (kcal)</label><input id="gKcal" type="number" inputmode="decimal" min="800" max="6000"></div>
+        <div class="field"><label for="gPro">蛋白質 (g)</label><input id="gPro" type="number" inputmode="decimal" min="0" max="500"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="gFatG">脂肪 (g)</label><input id="gFatG" type="number" inputmode="decimal" min="0" max="300"></div>
+        <div class="field"><label for="gCarb">碳水 (g)</label><input id="gCarb" type="number" inputmode="decimal" min="0" max="1000"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="gNa">鈉上限 (mg)</label><input id="gNa" type="number" inputmode="decimal" min="500" max="6000"></div>
+        <div class="field"></div>
+      </div>
+    </div>
+    <div class="card" id="goalResult"></div>
+  </section>
+
+  <section id="tab-sync">
+    <div class="card">
+      <h2>Google 試算表同步</h2>
+      <p class="sub">資料存在你自己的 Google 試算表。網址與 TOKEN 只保存在這台裝置的瀏覽器。</p>
+      <div class="field"><label for="syUrl">Apps Script 網頁應用程式網址</label><input id="syUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div class="field"><label for="syToken">TOKEN 密碼</label><input id="syToken" type="password" autocomplete="off"></div>
+      <div class="btnrow"><button class="btn" id="syConnect" type="button">儲存並同步</button><button class="btn ghost" id="syNow" type="button">立即同步</button></div>
+      <p class="note" id="syStatus"></p>
+    </div>
+    <div class="card">
+      <h2>說明</h2>
+      <p class="note" style="margin-top:0">每次記錄後約 1.5 秒自動上傳；開啟頁面、切回頁面時會自動讀取試算表。第一次連線會把本機與試算表合併，同一筆兩邊都改過時以試算表為準。離線時資料先存在本機，連線後自動補傳。</p>
+      <div class="btnrow" style="margin-top:12px"><button class="btn ghost" id="syOverwrite" type="button">以試算表為準（清空本機重新載入）</button><button class="btn ghost" id="syClear" type="button">清除連線設定</button></div>
+    </div>
+  </section>
+
+  <section id="tab-progress">
+    <div class="card">
+      <h2>記錄體重</h2>
+      <div class="row">
+        <div class="field"><label for="wDate">日期</label><input id="wDate" type="date"></div>
+        <div class="field"><label for="wKg">體重 (kg)</label><input id="wKg" type="number" inputmode="decimal" step="0.1" min="30" max="250"></div>
+        <div class="field"><label for="wFat">體脂率 (%)</label><input id="wFat" type="number" inputmode="decimal" step="0.1" min="3" max="60"></div>
+      </div>
+      <button class="btn" id="addWeight">儲存體重</button>
+    </div>
+    <div class="card" id="progressView"></div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="today" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>今日</button>
+  <button data-tab="goal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>目標</button>
+  <button data-tab="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg>進度</button>
+  <button data-tab="sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8.5a4.5 4.5 0 0 1 .5 9.5H7z"/></svg>同步</button>
+</nav>
+
+<script>
+(function(){
+  var KEY='kcal-app-v1';
+  var DEF={naTarget:2300,kcalOverride:'',proOverride:'',fatOverride:'',carbOverride:'',bmrOverride:'',addBack:false,sex:'m',age:30,height:170,weight:70,act:1.375,goal:'cut',pct:20,ppk:2.0,fatPct:25,saved:false};
+  var S={profile:Object.assign({},DEF),foods:{},weights:[],myFoods:[],workouts:{},myEx:[],pHist:[],water:{}};
+  var PRESETS=[
+    ['雞胸肉 100g',120,23,0,2],['白飯 1碗',280,5,62,0.5],['水煮蛋 1顆',75,6.5,0.5,5],
+    ['無糖豆漿 400ml',150,14,6,8],['地瓜 1條',180,2,42,0.3],['香蕉 1根',90,1,23,0.3],
+    ['乳清蛋白 1份',120,24,3,1.5],['御飯糰 1個',180,4,36,2]
+  ];
+  var MEALS=['早餐','午餐','晚餐','點心'];
+  var openMeal=null, servings=1;
+  var showForm=false, flash='';
+  var UNITS=[
+    ['重量／容量',['g','kg','ml','l']],
+    ['餐具量器',['碗','杯','盤','匙','勺']],
+    ['個數',['個','塊','粒','串','片']],
+    ['包裝',['份','包','盒','瓶','罐']]
+  ];
+  var ALLU=[].concat.apply([],UNITS.map(function(g){return g[1];}));
+  var OTHER='其他';
+  var draft={id:null,name:'',brand:'',amt:'1',unit:'份',unitC:'',kcal:'',p:'',c:'',f:'',sugar:'',fiber:'',sat:'',trans:'',na:''};
+
+  function load(){
+    try{
+      var r=localStorage.getItem(KEY);
+      if(r){var o=JSON.parse(r);
+        if(o.profile)S.profile=Object.assign({},DEF,o.profile);
+        if(o.foods)S.foods=o.foods;
+        if(Array.isArray(o.weights))S.weights=o.weights;
+        if(Array.isArray(o.myFoods))S.myFoods=o.myFoods;
+        if(o.workouts)S.workouts=o.workouts;
+        if(Array.isArray(o.myEx))S.myEx=o.myEx;
+        if(Array.isArray(o.pHist))S.pHist=o.pHist;
+        if(o.water)S.water=o.water;}
+    }catch(e){}
+  }
+  function profileFor(d){
+    var best=null;
+    S.pHist.forEach(function(h){if(h.from<=d&&(!best||h.from>=best.from))best=h;});
+    return best?Object.assign({},DEF,best.p):S.profile;
+  }
+  function commitProfile(){
+    var t=todayStr(),snap=JSON.parse(JSON.stringify(S.profile));
+    var hit=S.pHist.filter(function(h){return h.from===t;})[0];
+    if(hit)hit.p=snap;else S.pHist.push({from:t,p:snap});
+    S.pHist.sort(function(a,b){return a.from<b.from?-1:a.from>b.from?1:0;});
+  }
+  function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+  function save(){persist();if(typeof scheduleSync==='function')scheduleSync();}
+  function $(id){return document.getElementById(id);}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function num(v,d){var n=parseFloat(v);return isFinite(n)?n:(d===undefined?0:d);}
+  function r0(n){return Math.round(n);}
+  function r1(n){return Math.round(n*10)/10;}
+  function pad(n){return String(n).padStart(2,'0');}
+  function ds(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+  function todayStr(){return ds(new Date());}
+  function shift(s,delta){var p=s.split('-').map(Number);return ds(new Date(p[0],p[1]-1,p[2]+delta));}
+  var WD=['日','一','二','三','四','五','六'];
+  function dateText(s){var p=s.split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]);return p[1]+' 月 '+p[2]+' 日（週'+WD[d.getDay()]+'）';}
+  var curDate=todayStr();
+  function amtLabel(f){
+    if(f.amount!==undefined&&f.amount!==''&&f.amount!==null)return f.amount+(f.unit||'');
+    return f.unit||'';
+  }
+  function nz(v){return v?String(r1(v)):'';}
+  function foodName(f){var a=amtLabel(f);return f.name+(a?' '+a:'');}
+
+  function calc(p){
+    var bmrF=10*p.weight+6.25*p.height-5*p.age+(p.sex==='m'?5:-161);
+    var bmr=num(p.bmrOverride)>0?num(p.bmrOverride):bmrF;
+    var tdee=bmr*p.act;
+    var kcalF=p.goal==='cut'?tdee*(1-p.pct/100):p.goal==='bulk'?tdee*(1+p.pct/100):tdee;
+    var kcal=num(p.kcalOverride)>0?num(p.kcalOverride):kcalF;
+    var protein=num(p.proOverride)>0?num(p.proOverride):p.ppk*p.weight;
+    var fat=num(p.fatOverride)>0?num(p.fatOverride):kcal*(p.fatPct/100)/9;
+    var carb=num(p.carbOverride)>0?num(p.carbOverride):Math.max(0,(kcal-protein*4-fat*9)/4);
+    return {na:num(p.naTarget,2300),kcalF:kcalF,bmrF:bmrF,bmr:bmr,tdee:tdee,kcal:kcal,protein:protein,fat:fat,carb:carb};
+  }
+
+  function dayItems(){return S.foods[curDate]||[];}
+  function macroBar(name,val,target,color,unit){
+    unit=unit||'g';
+    var w=target>0?Math.min(100,val/target*100):0;
+    return '<div class="macro"><div class="t"><span>'+name+'</span><span>'+r0(val)+' / '+r0(target)+' '+unit+'</span></div><div class="bar"><i style="width:'+w+'%;background:'+color+'"></i></div></div>';
+  }
+  var WK=['一','二','三','四','五','六','日'];
+  function renderWeek(T){
+    var p=curDate.split('-').map(Number);
+    var d=new Date(p[0],p[1]-1,p[2]);
+    var mon=shift(curDate,-((d.getDay()+6)%7));
+    var h='',tod=todayStr();
+    for(var i=0;i<7;i++){
+      var ds2=shift(mon,i),dn=+ds2.split('-')[2];
+      var k=(S.foods[ds2]||[]).reduce(function(a,x){return a+x.kcal;},0);
+      var tk=calc(profileFor(ds2)).kcal;
+      var ratio=tk>0?Math.min(1,k/tk):0;
+      h+='<button class="wd'+(ds2===curDate?' sel':'')+(ds2===tod?' today':'')+'" data-day="'+ds2+'"'+(ds2>tod?' disabled':'')+' aria-label="'+dateText(ds2)+'"'+(ds2===curDate?' aria-pressed="true"':'')+'><small>'+WK[i]+'</small><b>'+dn+'</b><i><u class="'+(k>tk?'over':'')+'" style="width:'+(ratio*100)+'%"></u></i></button>';
+    }
+    $('weekbar').innerHTML=h;
+  }
+  function ringHtml(p,bad,numTxt,lab,sub){
+    var C=2*Math.PI*62,off=C*(1-p);
+    return '<div class="ringcol"><div class="ring"><svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="62" fill="none" stroke="var(--track)" stroke-width="14"/>'+
+      '<circle cx="75" cy="75" r="62" fill="none" stroke="'+(bad?'var(--over)':'var(--ok)')+'" stroke-width="14" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+off+'"/></svg>'+
+      '<div class="mid"><div class="num'+(bad?' over':'')+'">'+numTxt+'</div><div class="lab">'+lab+'</div></div></div><div class="rsub">'+sub+'</div></div>';
+  }
+  function renderToday(){
+    $('dateLabel').innerHTML=dateText(curDate)+'<small>'+(curDate===todayStr()?'今天・每日 23:59 截止':'')+'</small>';
+    $('nextDay').disabled=curDate>=todayStr();
+    $('nextDay').style.opacity=$('nextDay').disabled?.4:1;
+    var T=calc(profileFor(curDate)), items=dayItems();
+    renderWeek(T);
+    var e={k:0,p:0,c:0,f:0,na:0,su:0,fi:0,sa:0,tr:0};
+    items.forEach(function(i){e.k+=i.kcal;e.p+=i.p;e.c+=i.c;e.f+=i.f;e.na+=i.na||0;e.su+=i.sugar||0;e.fi+=i.fiber||0;e.sa+=i.sat||0;e.tr+=i.trans||0;});
+    var burned=burnedToday();
+    var remain=T.kcal-e.k, over=remain<0;
+    var C=2*Math.PI*62, pct=Math.max(0,Math.min(1,e.k/T.kcal)), off=C*(1-pct);
+    var h='';
+    if(!S.profile.saved)h+='<div class="hint">目前使用預設身體資料。先到「目標」填入你的資料，目標熱量會更準。</div>';
+    var defi=T.tdee-e.k, defOver=defi<0, pct2=Math.max(0,Math.min(1,e.k/T.tdee));
+    h+='<div class="rings">'+
+       ringHtml(pct,over,Math.abs(r0(remain)),over?'kcal 已超過目標':'kcal 還能吃','目標 '+r0(T.kcal))+
+       ringHtml(pct2,defOver,Math.abs(r0(defi)),defOver?'kcal 熱量盈餘':'kcal 熱量赤字','TDEE '+r0(T.tdee)+' − 已吃')+'</div>'+
+       '<div class="stats"><div><span>目標</span><b>'+r0(T.kcal)+'</b></div><div><span>已吃</span><b>'+r0(e.k)+'</b></div><div><span>運動消耗</span><b>'+r0(burned)+'</b></div><div><span>基礎代謝 BMR</span><b>'+r0(T.bmr)+'</b></div><div><span>TDEE</span><b>'+r0(T.tdee)+'</b></div></div>';
+    h+=macroBar('蛋白質',e.p,T.protein,'var(--pro)')+macroBar('碳水',e.c,T.carb,'var(--carb)')+macroBar('脂肪',e.f,T.fat,'var(--fat)')+macroBar('鈉',e.na,T.na,'var(--muted)','mg')+'<p class="note">糖 '+r1(e.su)+' g・膳食纖維 '+r1(e.fi)+' g・飽和脂肪 '+r1(e.sa)+' g・反式脂肪 '+r1(e.tr)+' g</p>';
+    $('summary').innerHTML=h;
+    renderMeals();
+    renderExercise();
+    renderWeightCard();
+    renderWaterCard();
+  }
+
+  function unitOptions(){
+    var h='';
+    UNITS.forEach(function(g){
+      h+='<optgroup label="'+g[0]+'">';
+      g[1].forEach(function(u){h+='<option value="'+esc(u)+'"'+(draft.unit===u?' selected':'')+'>'+esc(u)+'</option>';});
+      h+='</optgroup>';
+    });
+    h+='<option value="'+OTHER+'"'+(draft.unit===OTHER?' selected':'')+'>其他（自訂）</option>';
+    return h;
+  }
+  function createFormHtml(m){
+    var editing=!!draft.id;
+    var h='<div class="create"><h4>'+(editing?'編輯食物':'建立新食物')+'</h4>'+
+      '<div class="row"><div class="field" style="flex:1.4"><label for="pName">食物名稱</label><input id="pName" placeholder="例如：滷雞腿便當" value="'+esc(draft.name)+'"></div>'+
+      '<div class="field"><label for="pBrand">品牌（選填）</label><input id="pBrand" placeholder="例如：能量小姐" value="'+esc(draft.brand)+'"></div></div>'+
+      '<div class="row"><div class="field"><label for="pAmt">數量</label><input id="pAmt" type="number" inputmode="decimal" step="any" min="0" value="'+esc(draft.amt)+'"></div>'+
+      '<div class="field" style="flex:1.4"><label for="pUnit">單位</label><select id="pUnit">'+unitOptions()+'</select></div></div>'+
+      (draft.unit===OTHER?'<div class="field"><label for="pUnitC">自訂單位</label><input id="pUnitC" placeholder="例如：小匙、一掌心" value="'+esc(draft.unitC)+'"></div>':'')+
+      '<div class="row"><div class="field"><label for="pKcal">熱量 (kcal)</label><input id="pKcal" type="number" inputmode="decimal" min="0" value="'+esc(draft.kcal)+'"></div>'+
+      '<div class="field"><label for="pP">蛋白質 (g)</label><input id="pP" type="number" inputmode="decimal" min="0" value="'+esc(draft.p)+'"></div></div>'+
+      '<div class="row"><div class="field"><label for="pC">碳水 (g)</label><input id="pC" type="number" inputmode="decimal" min="0" value="'+esc(draft.c)+'"></div>'+
+      '<div class="field"><label for="pF">脂肪 (g)</label><input id="pF" type="number" inputmode="decimal" min="0" value="'+esc(draft.f)+'"></div></div>'+
+      '<div class="row"><div class="field"><label for="pNa">鈉 (mg)</label><input id="pNa" type="number" inputmode="decimal" min="0" value="'+esc(draft.na)+'"></div>'+
+      '<div class="field"><label for="pSugar">糖 (g)</label><input id="pSugar" type="number" inputmode="decimal" min="0" value="'+esc(draft.sugar)+'"></div></div>'+
+      '<details class="more"'+((draft.fiber||draft.sat||draft.trans)?' open':'')+'><summary>更多營養素（選填）</summary>'+
+      '<div class="row" style="margin-top:10px"><div class="field"><label for="pFiber">膳食纖維 (g)</label><input id="pFiber" type="number" inputmode="decimal" min="0" value="'+esc(draft.fiber)+'"></div>'+
+      '<div class="field"><label for="pSat">飽和脂肪 (g)</label><input id="pSat" type="number" inputmode="decimal" min="0" value="'+esc(draft.sat)+'"></div>'+
+      '<div class="field"><label for="pTrans">反式脂肪 (g)</label><input id="pTrans" type="number" inputmode="decimal" min="0" value="'+esc(draft.trans)+'"></div></div></details>'+
+      '<div class="btnrow" style="margin-top:12px"><button class="btn" data-savefood="lib">'+(editing?'更新食物':'建立食物')+'</button>'+
+      (editing?'':'<button class="btn ghost" data-savefood="add">建立並加入'+m+'</button>')+'</div>'+
+      '<p class="note">以下熱量與營養素，請填上面「數量＋單位」的量，例如 1 碗，或 100 g。熱量留空時，會用三大營養素換算（蛋白質、碳水 4 kcal/g，脂肪 9 kcal/g）。建立後會出現在「我的食物」，之後一鍵加入。</p></div>';
+    return h;
+  }
+  function panelHtml(m){
+    var h='<div class="panel">';
+    h+='<div class="row"><div class="field" style="max-width:140px"><label for="pServ">份數（點選食物時套用）</label><input id="pServ" type="number" inputmode="decimal" step="0.5" min="0.5" value="'+servings+'"></div></div>';
+    h+='<div class="grp">我的食物</div>';
+    if(S.myFoods.length){
+      h+='<div class="chips">';
+      S.myFoods.forEach(function(f){
+        h+='<span class="chipg"><button class="chip" title="'+esc(f.brand||'')+'" data-quick="my:'+f.id+'">'+esc(foodName(f))+'・'+r0(f.kcal)+'</button><button class="chipx" data-editmy="'+f.id+'" aria-label="編輯 '+esc(f.name)+'">✎</button><button class="chipx" data-rmmy="'+f.id+'" aria-label="刪除 '+esc(f.name)+'">✕</button></span>';
+      });
+      h+='</div>';
+    }else h+='<div class="empty" style="padding-top:0">還沒有自己建立的食物。</div>';
+    h+='<div style="margin-top:10px"><button class="btn ghost" data-newfood="1">'+(showForm?'收起表單':'＋ 建立新食物')+'</button></div>';
+    h+='<div class="flash" id="flash" role="status">'+esc(flash)+'</div>';
+    if(showForm)h+=createFormHtml(m);
+    h+='<div class="grp">常用食物</div><div class="chips">';
+    PRESETS.forEach(function(p,i){h+='<button class="chip" data-quick="pre:'+i+'">'+p[0]+'・'+p[1]+'</button>';});
+    h+='</div></div>';
+    return h;
+  }
+  function renderMeals(){
+    var items=dayItems(), h='';
+    var total=items.reduce(function(a,i){return a+i.kcal;},0);
+    h+='<div class="card group"><div class="gh"><h2>飲食</h2><span>'+r0(total)+' kcal</span></div>';
+    MEALS.forEach(function(m){
+      var arr=items.filter(function(i){return i.meal===m;});
+      var sum=arr.reduce(function(a,i){return a+i.kcal;},0);
+      var isOpen=openMeal===m;
+      h+='<div class="meal"><div class="mh"><h3>'+m+'</h3><span class="ms">'+r0(sum)+' kcal</span>'+
+         '<button class="addbtn'+(isOpen?' open':'')+'" data-open="'+m+'">'+(isOpen?'收合':'＋ 新增食物')+'</button></div>';
+      if(!arr.length&&!isOpen)h+='<div class="empty">還沒有記錄</div>';
+      arr.forEach(function(i){
+        h+='<div class="item"><div class="n">'+esc(i.name)+'<small>'+(i.brand?esc(i.brand)+'・':'')+'蛋白 '+r1(i.p)+'g・碳水 '+r1(i.c)+'g・脂肪 '+r1(i.f)+'g'+(i.na?'・鈉 '+r0(i.na)+'mg':'')+'</small></div><div class="k">'+r0(i.kcal)+'</div><button class="x" data-del="'+i.id+'" aria-label="刪除">✕</button></div>';
+      });
+      if(isOpen)h+=panelHtml(m);
+      h+='</div>';
+    });
+    h+='</div>';
+    $('meals').innerHTML=h;
+  }
+  function addFood(name,n,meal,mult){
+    var arr=S.foods[curDate]||(S.foods[curDate]=[]);
+    var label=name||'未命名';
+    if(mult!==1)label+=' ×'+mult;
+    arr.push({id:Date.now()+''+Math.floor(Math.random()*1000),name:label,brand:n.brand||'',meal:meal,
+      kcal:n.kcal*mult,p:(n.p||0)*mult,c:(n.c||0)*mult,f:(n.f||0)*mult,
+      sugar:(n.sugar||0)*mult,fiber:(n.fiber||0)*mult,sat:(n.sat||0)*mult,trans:(n.trans||0)*mult,na:(n.na||0)*mult});
+    save();
+  }
+  function readServ(){var el=$('pServ');var v=el?num(el.value,1):servings;if(v<=0)v=1;servings=v;return v;}
+  function resetDraft(){draft={id:null,name:'',brand:'',amt:'1',unit:'份',unitC:'',kcal:'',p:'',c:'',f:'',sugar:'',fiber:'',sat:'',trans:'',na:''};}
+  function readDraft(){
+    var map={pName:'name',pBrand:'brand',pSugar:'sugar',pFiber:'fiber',pSat:'sat',pTrans:'trans',pNa:'na',pAmt:'amt',pUnit:'unit',pUnitC:'unitC',pKcal:'kcal',pP:'p',pC:'c',pF:'f'};
+    Object.keys(map).forEach(function(id){var el=$(id);if(el)draft[map[id]]=el.value;});
+  }
+  var flashTimer=null;
+  function setFlash(msg){
+    flash=msg;
+    clearTimeout(flashTimer);
+    flashTimer=setTimeout(function(){flash='';var el=$('flash');if(el)el.textContent='';},3000);
+  }
+
+  $('meals').addEventListener('input',function(e){
+    if(e.target.id==='pServ'){var v=num(e.target.value,1);if(v>0)servings=v;}
+    else if(/^p(Name|Brand|Amt|UnitC|Kcal|P|C|F|Sugar|Fiber|Sat|Trans|Na)$/.test(e.target.id))readDraft();
+  });
+  $('meals').addEventListener('change',function(e){
+    if(e.target.id==='pUnit'){readDraft();renderMeals();var el=$(draft.unit===OTHER?'pUnitC':'pUnit');if(el)el.focus();}
+  });
+  $('meals').addEventListener('click',function(e){
+    var t=e.target.closest('button');if(!t)return;
+    if(t.dataset.open){openMeal=(openMeal===t.dataset.open)?null:t.dataset.open;showForm=false;resetDraft();renderMeals();return;}
+    if(t.dataset.del){S.foods[curDate]=dayItems().filter(function(i){return i.id!==t.dataset.del;});save();renderToday();return;}
+    if(t.dataset.rmmy){S.myFoods=S.myFoods.filter(function(f){return f.id!==t.dataset.rmmy;});if(draft.id===t.dataset.rmmy){resetDraft();showForm=false;}save();renderMeals();return;}
+    if(t.dataset.editmy){
+      var f0=S.myFoods.filter(function(x){return x.id===t.dataset.editmy;})[0];if(!f0)return;
+      var u0=f0.unit||'',a0=(f0.amount===undefined||f0.amount===null)?'':String(f0.amount);
+      var known=ALLU.indexOf(u0)>=0;
+      draft={id:f0.id,name:f0.name,amt:known?a0:'',unit:known?u0:(u0?OTHER:'份'),unitC:known?'':u0,kcal:r1(f0.kcal),p:r1(f0.p),c:r1(f0.c),f:r1(f0.f),brand:f0.brand||'',sugar:nz(f0.sugar),fiber:nz(f0.fiber),sat:nz(f0.sat),trans:nz(f0.trans),na:nz(f0.na)};
+      showForm=true;renderMeals();var n=$('pName');if(n)n.focus();return;
+    }
+    if(t.dataset.newfood){
+      if(showForm){showForm=false;resetDraft();}else{showForm=true;resetDraft();}
+      renderMeals();if(showForm&&$('pName'))$('pName').focus();return;
+    }
+    if(t.dataset.quick){
+      var mult=readServ(),parts=t.dataset.quick.split(':'),f;
+      if(parts[0]==='my'){f=S.myFoods.filter(function(x){return x.id===parts[1];})[0];if(!f)return;addFood(foodName(f),f,openMeal,mult);}
+      else{var p=PRESETS[+parts[1]];addFood(p[0],{kcal:p[1],p:p[2],c:p[3],f:p[4]},openMeal,mult);}
+      renderToday();return;
+    }
+    if(t.dataset.savefood){
+      readDraft();
+      var name=draft.name.trim();
+      if(!name){$('pName').focus();setFlash('請先填食物名稱');var fl=$('flash');if(fl)fl.textContent=flash;return;}
+      var k=num(draft.kcal),p2=num(draft.p),c2=num(draft.c),f2=num(draft.f);
+      if(!k)k=p2*4+c2*4+f2*9;
+      if(!k){$('pKcal').focus();setFlash('請填熱量，或至少填一項營養素');var fl2=$('flash');if(fl2)fl2.textContent=flash;return;}
+      var unitFinal=draft.unit===OTHER?draft.unitC.trim():draft.unit;
+      var amtN=draft.amt===''?'':num(draft.amt);
+      var rec={id:draft.id||Date.now()+'',name:name,brand:draft.brand.trim(),amount:unitFinal?amtN:'',unit:unitFinal,kcal:k,p:p2,c:c2,f:f2,sugar:num(draft.sugar),fiber:num(draft.fiber),sat:num(draft.sat),trans:num(draft.trans),na:num(draft.na)};
+      if(draft.id){
+        S.myFoods=S.myFoods.map(function(x){return x.id===draft.id?rec:x;});
+        setFlash('已更新「'+name+'」');
+      }else{
+        S.myFoods=S.myFoods.filter(function(x){return x.name!==name||amtLabel(x)!==amtLabel(rec);});
+        S.myFoods.unshift(rec);
+        setFlash('已建立「'+name+'」，可在「我的食物」找到');
+      }
+      var mult2=readServ();
+      var addNow=t.dataset.savefood==='add';
+      if(addNow)addFood(foodName(rec),rec,openMeal,mult2);
+      save();resetDraft();showForm=false;
+      if(addNow)renderToday();else renderMeals();
+      return;
+    }
+  });
+
+  /* ---------- 運動 ---------- */
+  var EX_PRESETS=[['重量訓練',5],['Zone 2 有氧',6.5],['快走',4.3],['慢跑',7],['跑步',9.8],['騎腳踏車',6.8],['游泳',6],['HIIT',8],['瑜珈',2.5]];
+  var exOpen=false, exForm=false, exFlash='', exMin='30', exTimer=null;
+  var xDraft={id:null,name:'',min:'30',kcal:''};
+  function dayWork(){return S.workouts[curDate]||[];}
+  function burnedToday(){return dayWork().reduce(function(a,i){return a+i.kcal;},0);}
+  function setExFlash(msg){
+    exFlash=msg;clearTimeout(exTimer);
+    exTimer=setTimeout(function(){exFlash='';var el=$('exFlash');if(el)el.textContent='';},3000);
+  }
+  function readXDraft(){
+    var map={xName:'name',xMin:'min',xKcal:'kcal'};
+    Object.keys(map).forEach(function(id){var el=$(id);if(el)xDraft[map[id]]=el.value;});
+  }
+  function readExMin(){var el=$('xAddMin');var v=el?num(el.value,30):num(exMin,30);if(v<=0)v=30;exMin=String(v);return v;}
+  function exFormHtml(){
+    var editing=!!xDraft.id;
+    return '<div class="create"><h4>'+(editing?'編輯運動':'建立新運動')+'</h4>'+
+      '<div class="field"><label for="xName">運動名稱</label><input id="xName" placeholder="例如：飛輪課" value="'+esc(xDraft.name)+'"></div>'+
+      '<div class="row"><div class="field"><label for="xMin">時間 (分鐘)</label><input id="xMin" type="number" inputmode="decimal" min="1" value="'+esc(xDraft.min)+'"></div>'+
+      '<div class="field"><label for="xKcal">這段時間消耗 (kcal)</label><input id="xKcal" type="number" inputmode="decimal" min="0" value="'+esc(xDraft.kcal)+'"></div></div>'+
+      '<div class="btnrow"><button class="btn" data-xsave="lib">'+(editing?'更新運動':'建立運動')+'</button>'+
+      (editing?'':'<button class="btn ghost" data-xsave="add">建立並加入今天</button>')+'</div>'+
+      '<p class="note">填「時間」和「這段時間消耗的熱量」（可看手錶或器材顯示）。之後加入時，輸入不同分鐘數會依比例換算。</p></div>';
+  }
+  function renderExercise(){
+    var arr=dayWork(), mins=arr.reduce(function(a,i){return a+i.min;},0), kc=burnedToday();
+    var h='<div class="card"><div class="mh"><h3>運動</h3><span class="ms">'+r0(mins)+' 分鐘・'+r0(kc)+' kcal</span>'+
+      '<button class="addbtn'+(exOpen?' open':'')+'" data-xopen="1">'+(exOpen?'收合':'＋ 新增運動')+'</button></div>';
+    if(!arr.length&&!exOpen)h+='<div class="empty">還沒有運動記錄</div>';
+    arr.forEach(function(i){
+      h+='<div class="item"><div class="n">'+esc(i.name)+'<small>'+r0(i.min)+' 分鐘</small></div><div class="k">'+r0(i.kcal)+'</div><button class="x" data-xdel="'+i.id+'" aria-label="刪除">✕</button></div>';
+    });
+    if(exOpen){
+      h+='<div class="panel"><div class="row"><div class="field" style="max-width:160px"><label for="xAddMin">時間 (分鐘，點選運動時套用)</label><input id="xAddMin" type="number" inputmode="decimal" min="1" value="'+esc(exMin)+'"></div></div>';
+      h+='<div class="grp">我的運動</div>';
+      if(S.myEx.length){
+        h+='<div class="chips">';
+        S.myEx.forEach(function(x){
+          h+='<span class="chipg"><button class="chip" data-xquick="my:'+x.id+'">'+esc(x.name)+'・'+r0(x.kcalPerMin*60)+'/時</button><button class="chipx" data-xedit="'+x.id+'" aria-label="編輯 '+esc(x.name)+'">✎</button><button class="chipx" data-xrm="'+x.id+'" aria-label="刪除 '+esc(x.name)+'">✕</button></span>';
+        });
+        h+='</div>';
+      }else h+='<div class="empty" style="padding-top:0">還沒有自己建立的運動。</div>';
+      h+='<div style="margin-top:10px"><button class="btn ghost" data-xnew="1">'+(exForm?'收起表單':'＋ 建立新運動')+'</button></div>';
+      h+='<div class="flash" id="exFlash" role="status">'+esc(exFlash)+'</div>';
+      if(exForm)h+=exFormHtml();
+      h+='<div class="grp">常用運動（依你的體重估算）</div><div class="chips">';
+      EX_PRESETS.forEach(function(p,i){h+='<button class="chip" data-xquick="pre:'+i+'">'+p[0]+'・'+r0(p[1]*profileFor(curDate).weight)+'/時</button>';});
+      h+='</div><p class="note">常用運動用 MET 估算，只是參考；實際以手錶或器材數字為準。</p></div>';
+    }
+    h+='</div>';
+    $('exercise').innerHTML=h;
+  }
+  function addWork(name,min,kcal){
+    var arr=S.workouts[curDate]||(S.workouts[curDate]=[]);
+    arr.push({id:Date.now()+''+Math.floor(Math.random()*1000),name:name,min:min,kcal:kcal});
+    save();
+  }
+  $('exercise').addEventListener('input',function(e){
+    if(e.target.id==='xAddMin'){exMin=e.target.value;}
+    else if(/^x(Name|Min|Kcal)$/.test(e.target.id))readXDraft();
+  });
+  $('exercise').addEventListener('click',function(e){
+    var t=e.target.closest('button');if(!t)return;
+    if(t.dataset.xopen){exOpen=!exOpen;exForm=false;xDraft={id:null,name:'',min:'30',kcal:''};renderExercise();return;}
+    if(t.dataset.xdel){S.workouts[curDate]=dayWork().filter(function(i){return i.id!==t.dataset.xdel;});save();renderToday();return;}
+    if(t.dataset.xrm){S.myEx=S.myEx.filter(function(x){return x.id!==t.dataset.xrm;});if(xDraft.id===t.dataset.xrm){exForm=false;xDraft={id:null,name:'',min:'30',kcal:''};}save();renderExercise();return;}
+    if(t.dataset.xedit){
+      var x0=S.myEx.filter(function(x){return x.id===t.dataset.xedit;})[0];if(!x0)return;
+      xDraft={id:x0.id,name:x0.name,min:String(x0.min||60),kcal:String(r0(x0.kcalPerMin*(x0.min||60)))};
+      exForm=true;renderExercise();if($('xName'))$('xName').focus();return;
+    }
+    if(t.dataset.xnew){
+      exForm=!exForm;xDraft={id:null,name:'',min:'30',kcal:''};renderExercise();if(exForm&&$('xName'))$('xName').focus();return;
+    }
+    if(t.dataset.xquick){
+      var m=readExMin(),parts=t.dataset.xquick.split(':');
+      if(parts[0]==='my'){var x=S.myEx.filter(function(z){return z.id===parts[1];})[0];if(!x)return;addWork(x.name,m,x.kcalPerMin*m);}
+      else{var p=EX_PRESETS[+parts[1]];addWork(p[0],m,p[1]*profileFor(curDate).weight*m/60);}
+      renderToday();return;
+    }
+    if(t.dataset.xsave){
+      readXDraft();
+      var name=xDraft.name.trim(),min=num(xDraft.min),kc=num(xDraft.kcal);
+      if(!name){$('xName').focus();setExFlash('請先填運動名稱');var f1=$('exFlash');if(f1)f1.textContent=exFlash;return;}
+      if(min<=0||kc<=0){setExFlash('請填時間與消耗熱量');var f2=$('exFlash');if(f2)f2.textContent=exFlash;return;}
+      var rec={id:xDraft.id||Date.now()+'',name:name,min:min,kcalPerMin:kc/min};
+      if(xDraft.id){S.myEx=S.myEx.map(function(z){return z.id===xDraft.id?rec:z;});setExFlash('已更新「'+name+'」');}
+      else{S.myEx=S.myEx.filter(function(z){return z.name!==name;});S.myEx.unshift(rec);setExFlash('已建立「'+name+'」，可在「我的運動」找到');}
+      var addNow=t.dataset.xsave==='add';
+      if(addNow)addWork(name,min,kc);
+      save();exForm=false;xDraft={id:null,name:'',min:'30',kcal:''};
+      if(addNow)renderToday();else renderExercise();
+      return;
+    }
+  });
+
+
+  /* ---------- 每日體重 ---------- */
+  function renderWeightCard(){
+    var all=sortedW(),cur=all.filter(function(x){return x.date===curDate;})[0];
+    var prev=all.filter(function(x){return x.date<curDate;}).pop();
+    var from=shift(curDate,-6);
+    var wk=all.filter(function(x){return x.date>=from&&x.date<=curDate;});
+    var avg=wk.length?wk.reduce(function(a,x){return a+x.kg;},0)/wk.length:null;
+    var h='<div class="card"><div class="mh"><h3>體重</h3><span class="ms">'+(cur?cur.kg+' kg':'還沒填')+'</span></div>';
+    var prevFat=all.filter(function(x){return x.date<curDate&&x.fat>0;}).pop();
+    h+='<div class="row" style="margin-top:10px;align-items:flex-end"><div class="field" style="margin-bottom:0"><label for="tdKg">體重 (kg)</label><input id="tdKg" type="number" inputmode="decimal" step="0.1" min="30" max="250" value="'+(cur?cur.kg:'')+'" placeholder="'+(prev?prev.kg:'')+'"></div>'+
+       '<div class="field" style="margin-bottom:0"><label for="tdFat">體脂率 (%)</label><input id="tdFat" type="number" inputmode="decimal" step="0.1" min="3" max="60" value="'+(cur&&cur.fat>0?cur.fat:'')+'" placeholder="'+(prevFat?prevFat.fat:'')+'"></div>'+
+       '<div style="flex:0 0 auto"><button class="btn" data-wsave="1" style="width:auto;min-width:80px">'+(cur?'更新':'儲存')+'</button></div></div>';
+    var info=[];
+    if(cur&&prev){var dd=cur.kg-prev.kg;info.push('較上次（'+prev.date.slice(5)+'）'+(dd>0?'+':'')+r1(dd)+' kg');}
+    if(cur&&cur.fat>0){
+      if(prevFat&&prevFat.date<curDate){var fd=cur.fat-prevFat.fat;info.push('體脂較上次 '+(fd>0?'+':'')+r1(fd)+'%');}
+      info.push('脂肪量約 '+r1(cur.kg*cur.fat/100)+' kg・去脂體重約 '+r1(cur.kg*(1-cur.fat/100))+' kg');
+    }
+    if(avg!==null)info.push('近 7 天平均 '+r1(avg)+' kg（'+wk.length+' 筆）');
+    if(info.length)h+='<p class="note">'+info.join('・')+'</p>';
+    if(cur)h+='<button class="chip" data-wclear="1" style="margin-top:10px">清除這天的體重與體脂</button>';
+    h+='</div>';
+    $('weightcard').innerHTML=h;
+  }
+  $('weightcard').addEventListener('click',function(e){
+    var t=e.target.closest('button');if(!t)return;
+    if(t.dataset.wsave){
+      var kg=num($('tdKg').value);
+      if(kg<30||kg>250){$('tdKg').focus();return;}
+      S.weights=S.weights.filter(function(x){return x.date!==curDate;});
+      var fv=num($('tdFat').value),rec={date:curDate,kg:r1(kg)};if(fv>=3&&fv<=60)rec.fat=r1(fv);
+      S.weights.push(rec);save();renderWeightCard();return;
+    }
+    if(t.dataset.wclear){S.weights=S.weights.filter(function(x){return x.date!==curDate;});save();renderWeightCard();}
+  });
+  $('weightcard').addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&(e.target.id==='tdKg'||e.target.id==='tdFat')){var b=this.querySelector('[data-wsave]');if(b)b.click();}
+  });
+
+
+  /* ---------- 喝水 ---------- */
+  function waterToday(){return S.water[curDate]||0;}
+  function renderWaterCard(){
+    var ml=waterToday();
+    var h='<div class="card"><div class="mh"><h3>喝水</h3><span class="ms">'+r0(ml)+' ml</span></div>'+
+      '<div class="chips" style="margin-top:10px">'+[250,500,750].map(function(n){return '<button class="chip" data-wateradd="'+n+'">+'+n+' ml</button>';}).join('')+'</div>'+
+      '<div class="row" style="margin-top:10px;align-items:flex-end"><div class="field" style="margin-bottom:0"><label for="wtAmt">自訂 (ml)</label><input id="wtAmt" type="number" inputmode="decimal" min="1" max="5000"></div>'+
+      '<div style="flex:0 0 auto"><button class="btn" data-watercustom="1" style="width:auto;min-width:80px">加入</button></div></div>';
+    if(ml>0)h+='<button class="chip" data-waterreset="1" style="margin-top:10px">今天重填（歸零）</button>';
+    h+='</div>';
+    $('watercard').innerHTML=h;
+  }
+  $('watercard').addEventListener('click',function(e){
+    var t=e.target.closest('button');if(!t)return;
+    var add=0;
+    if(t.dataset.wateradd)add=num(t.dataset.wateradd);
+    else if(t.dataset.watercustom){add=num($('wtAmt').value);if(add<=0){$('wtAmt').focus();return;}}
+    else if(t.dataset.waterreset){S.water[curDate]=0;save();renderWaterCard();return;}
+    if(add>0){S.water[curDate]=waterToday()+add;save();renderWaterCard();}
+  });
+  $('watercard').addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&e.target.id==='wtAmt'){var b=this.querySelector('[data-watercustom]');if(b)b.click();}
+  });
+  $('weekbar').addEventListener('click',function(e){
+    var b=e.target.closest('[data-day]');if(!b||b.disabled)return;
+    curDate=b.dataset.day;renderToday();
+  });
+  $('prevDay').onclick=function(){curDate=shift(curDate,-1);renderToday();};
+  $('nextDay').onclick=function(){if(curDate<todayStr()){curDate=shift(curDate,1);renderToday();}};
+
+  function syncGoalInputs(){
+    var p=S.profile;
+    $('gAge').value=p.age;$('gH').value=p.height;$('gW').value=p.weight;
+    $('gAct').value=String(p.act);$('gBmr').value=p.bmrOverride;$('gNa').value=p.naTarget;$('gKcal').value=p.kcalOverride;$('gPro').value=p.proOverride;$('gFatG').value=p.fatOverride;$('gCarb').value=p.carbOverride;$('gPct').value=p.pct;$('gPpk').value=p.ppk;$('gFat').value=p.fatPct;
+    [].forEach.call($('sexSeg').children,function(b){b.classList.toggle('on',b.dataset.v===p.sex);});
+    [].forEach.call($('goalSeg').children,function(b){b.classList.toggle('on',b.dataset.v===p.goal);});
+    $('gPct').disabled=p.goal==='maintain';
+    $('gPctLab').textContent=p.goal==='bulk'?'熱量盈餘 (%)':p.goal==='cut'?'熱量赤字 (%)':'熱量調整 (%)';
+    var lw=latestWeight(),b=$('useLatest');
+    if(lw&&lw.kg!==p.weight){b.hidden=false;b.textContent='帶入最新體重 '+lw.kg+' kg';}else b.hidden=true;
+  }
+  function renderGoal(){
+    var p=S.profile,T=calc(p),diff=T.kcal-T.tdee;
+    var h='<h2>你的每日目標</h2><div class="result-big">'+
+      '<div class="kv main"><small>目標熱量（每日）</small><b>'+r0(T.kcal)+' kcal</b></div>'+
+      '<div class="kv"><small>基礎代謝 BMR'+(num(p.bmrOverride)>0?'（自填）':'（公式）')+'</small><b>'+r0(T.bmr)+'</b></div>'+
+      '<div class="kv"><small>每日消耗 TDEE</small><b>'+r0(T.tdee)+'</b></div></div>'+
+      '<div class="result-big" style="grid-template-columns:1fr 1fr 1fr">'+
+      '<div class="kv"><small>蛋白質</small><b>'+r0(T.protein)+' g</b></div>'+
+      '<div class="kv"><small>碳水</small><b>'+r0(T.carb)+' g</b></div>'+
+      '<div class="kv"><small>脂肪</small><b>'+r0(T.fat)+' g</b></div></div>'+
+      (num(p.bmrOverride)>0?'<p class="note" style="margin-top:0">公式估算的 BMR 為 '+r0(T.bmrF)+' kcal，目前以你填的數字計算。</p>':'')+'<p class="note" style="margin-top:0">與 TDEE 相差 '+(diff>=0?'+':'')+r0(diff)+' kcal。以此速度，每週體重約變化 '+r1(diff*7/7700)+' kg。</p>';
+    var msum=T.protein*4+T.carb*4+T.fat*9;
+    if(Math.abs(msum-T.kcal)>60)h+='<div class="warn">三大營養素目標合計約 '+r0(msum)+' kcal，與目標熱量 '+r0(T.kcal)+' 相差 '+r0(msum-T.kcal)+' kcal。可調整其中一項讓兩者接近。</div>';
+    if(T.kcal<T.bmr)h+='<div class="warn">目標熱量低於基礎代謝，不建議長期這樣吃。可降低赤字比例，或增加活動量。</div>';
+    if(p.goal==='cut'&&p.pct>25)h+='<div class="warn">赤字超過 25% 容易掉肌肉、難以持續，一般建議 15–25%。</div>';
+    var tn=todayStr();
+    h+='<p class="note">設定從今天（'+(+tn.split('-')[1])+'/'+(+tn.split('-')[2])+'）起生效，過去日期維持當時的設定。</p>';
+    h+='<button class="btn" id="saveGoal" style="margin-top:12px">'+(p.saved?'更新為今日目標':'儲存為今日目標')+'</button>';
+    $('goalResult').innerHTML=h;
+  }
+  function readGoal(){
+    var p=S.profile;
+    p.age=num($('gAge').value,p.age);p.height=num($('gH').value,p.height);p.weight=num($('gW').value,p.weight);
+    p.act=num($('gAct').value,p.act);p.naTarget=num($('gNa').value,2300);p.bmrOverride=$('gBmr').value===''?'':num($('gBmr').value);
+    p.kcalOverride=$('gKcal').value===''?'':num($('gKcal').value);
+    p.proOverride=$('gPro').value===''?'':num($('gPro').value);
+    p.fatOverride=$('gFatG').value===''?'':num($('gFatG').value);
+    p.carbOverride=$('gCarb').value===''?'':num($('gCarb').value);p.pct=num($('gPct').value,p.pct);p.ppk=num($('gPpk').value,p.ppk);p.fatPct=num($('gFat').value,p.fatPct);
+  }
+
+  function sortedW(){return S.weights.slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});}
+  function latestWeight(){var s=sortedW();return s.length?s[s.length-1]:null;}
+  function renderProgress(){
+    var w=sortedW(),h='<h2>體重趨勢</h2>';
+    if(w.length<1){h+='<div class="empty">還沒有體重記錄。從上方輸入第一筆。</div>';}
+    else{
+      var first=w[0],last=w[w.length-1],ch=last.kg-first.kg;
+      h+='<div class="result-big" style="grid-template-columns:1fr 1fr 1fr"><div class="kv"><small>起始</small><b>'+first.kg+'</b></div><div class="kv"><small>目前</small><b>'+last.kg+'</b></div><div class="kv"><small>變化</small><b>'+(ch>0?'+':'')+r1(ch)+'</b></div></div>';
+      if(w.length>=2)h+=chart(w.slice(-30),'kg');
+      var wf=w.filter(function(x){return x.fat>0;});
+      if(wf.length){
+        var f0=wf[0],f1=wf[wf.length-1],fc=f1.fat-f0.fat;
+        h+='<h2 style="margin-top:16px">體脂率趨勢</h2><div class="result-big" style="grid-template-columns:1fr 1fr 1fr"><div class="kv"><small>起始</small><b>'+f0.fat+'%</b></div><div class="kv"><small>目前</small><b>'+f1.fat+'%</b></div><div class="kv"><small>變化</small><b>'+(fc>0?'+':'')+r1(fc)+'</b></div></div>';
+        if(wf.length>=2)h+=chart(wf.slice(-30),'fat');
+      }
+      h+='<div style="margin-top:8px">';
+      w.slice().reverse().slice(0,14).forEach(function(x){
+        h+='<div class="wrow"><span>'+x.date+'</span><span><b>'+x.kg+' kg</b>'+(x.fat>0?'・'+x.fat+'%':'')+'</span><button class="x" data-wdel="'+x.date+'" aria-label="刪除">✕</button></div>';
+      });
+      h+='</div>';
+    }
+    $('progressView').innerHTML=h;
+  }
+  function chart(w,key){
+    var W=320,H=150,pl=30,pr=10,pt=10,pb=22;
+    var min=Math.min.apply(null,w.map(function(x){return x[key];})),max=Math.max.apply(null,w.map(function(x){return x[key];}));
+    if(max-min<1){min-=0.5;max+=0.5;}
+    var pd=(max-min)*0.15;min-=pd;max+=pd;
+    function X(i){return pl+(w.length===1?0:i*(W-pl-pr)/(w.length-1));}
+    function Y(v){return pt+(max-v)*(H-pt-pb)/(max-min);}
+    var pts=w.map(function(x,i){return X(i)+','+Y(x[key]);}).join(' ');
+    var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="折線圖">';
+    [0,0.5,1].forEach(function(t){var v=max-(max-min)*t,y=Y(v);s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(pl-4)+'" y="'+(y+3)+'" text-anchor="end">'+r1(v)+'</text>';});
+    s+='<polyline points="'+pts+'" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    w.forEach(function(x,i){s+='<circle cx="'+X(i)+'" cy="'+Y(x[key])+'" r="3" fill="var(--primary)"/>';});
+    s+='<text x="'+pl+'" y="'+(H-6)+'">'+w[0].date.slice(5)+'</text><text x="'+(W-pr)+'" y="'+(H-6)+'" text-anchor="end">'+w[w.length-1].date.slice(5)+'</text></svg>';
+    return s;
+  }
+
+  function showTab(t){
+    ['today','goal','progress','sync'].forEach(function(n){$('tab-'+n).classList.toggle('active',n===t);});
+    [].forEach.call(document.querySelectorAll('nav button'),function(b){b.classList.toggle('on',b.dataset.tab===t);});
+    if(t==='today')renderToday();
+    if(t==='goal'){syncGoalInputs();renderGoal();}
+    if(t==='progress')renderProgress();
+    if(t==='sync')renderSyncTab();
+    window.scrollTo(0,0);
+  }
+  document.querySelector('nav').addEventListener('click',function(e){var b=e.target.closest('button');if(b)showTab(b.dataset.tab);});
+
+  $('sexSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;S.profile.sex=b.dataset.v;commitProfile();save();syncGoalInputs();renderGoal();});
+  $('goalSeg').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    var g=b.dataset.v;S.profile.goal=g;S.profile.pct=g==='cut'?20:g==='bulk'?10:0;S.profile.ppk=g==='cut'?2.0:1.8;
+    commitProfile();save();syncGoalInputs();renderGoal();
+  });
+  ['gAge','gH','gW','gAct','gBmr','gKcal','gPro','gFatG','gCarb','gNa','gPct','gPpk','gFat'].forEach(function(id){
+    $(id).addEventListener('input',function(){readGoal();commitProfile();save();renderGoal();});
+  });
+  $('useLatest').onclick=function(){var lw=latestWeight();if(lw){S.profile.weight=lw.kg;commitProfile();save();syncGoalInputs();renderGoal();}};
+  $('goalResult').addEventListener('click',function(e){
+    if(e.target.id==='saveGoal'){S.profile.saved=true;commitProfile();save();showTab('today');}
+  });
+
+  $('wDate').value=todayStr();
+  $('addWeight').onclick=function(){
+    var d=$('wDate').value||todayStr(),kg=num($('wKg').value);
+    if(!kg){$('wKg').focus();return;}
+    S.weights=S.weights.filter(function(x){return x.date!==d;});
+    var fv=num($('wFat').value);var rec={date:d,kg:r1(kg)};if(fv>=3&&fv<=60)rec.fat=r1(fv);
+    S.weights.push(rec);save();$('wKg').value='';$('wFat').value='';renderProgress();
+  };
+  $('progressView').addEventListener('click',function(e){
+    var b=e.target.closest('[data-wdel]');if(!b)return;
+    S.weights=S.weights.filter(function(x){return x.date!==b.dataset.wdel;});save();renderProgress();
+  });
+
+  var lastToday=todayStr();
+  function rollover(){
+    var t=todayStr();
+    if(t===lastToday)return;
+    var following=(curDate===lastToday);
+    lastToday=t;
+    if(following)curDate=t;
+    if($('wDate'))$('wDate').value=t;
+    if($('tab-today').classList.contains('active'))renderToday();
+  }
+  setInterval(rollover,20000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)rollover();});
+
+
+  /* ---------- Google 試算表同步 ---------- */
+  var SKEY='kcal-sync-cfg', BKEY='kcal-sync-base';
+  var SYNC={url:'',token:'',base:{},timer:null,busy:false,again:false,last:0,ready:false,state:'off',msg:'',confirm:false};
+  var SHEETS={
+    '食物庫':['id','品名','品牌','數量','單位','卡路里','碳水','糖','膳食纖維','蛋白質','脂肪','飽和脂肪','反式脂肪','鈉'],
+    '運動庫':['id','運動項目','時間','卡路里'],
+    '飲食紀錄':['id','日期','餐別','品名','品牌','卡路里','碳水','糖','膳食纖維','蛋白質','脂肪','飽和脂肪','反式脂肪','鈉'],
+    '運動紀錄':['id','日期','運動項目','時間','卡路里'],
+    '每日紀錄':['日期','碳水(g)','蛋白質(g)','脂肪(g)','攝取卡路里kcal','攝取水(ml)','體重kg','體脂率%','基礎代謝率BMR kcal','運動量 kcal','鈉(mg)','糖(g)','膳食纖維(g)','飽和脂肪(g)','反式脂肪(g)'],
+    '設定':['生效日','內容']
+  };
+  var UMAP={'克':'g','公克':'g','g':'g','G':'g','公斤':'kg','kg':'kg','毫升':'ml','ml':'ml','公升':'l','l':'l','L':'l'};
+  function mapUnit(u){u=String(u==null?'':u).trim();return UMAP[u]||u;}
+  function cfgOk(){return !!(SYNC.url&&SYNC.token);}
+  function nv(v){if(v===null||v===undefined)return '';if(typeof v==='number')return String(Math.round(v*100)/100);return String(v).trim();}
+  function rs(n,r){return JSON.stringify(SHEETS[n].map(function(h){return nv(r[h]);}));}
+  function ck(n,r){
+    if(n==='每日紀錄')return JSON.stringify(['日期','體重kg','體脂率%','攝取水(ml)'].map(function(h){return nv(r[h]);}));
+    return rs(n,r);
+  }
+  function fillRow(n,row){var o={};SHEETS[n].forEach(function(h){o[h]=row[h]===undefined||row[h]===null?'':row[h];});return o;}
+
+  function dailyRow(d){
+    var its=S.foods[d]||[],ws=S.workouts[d]||[];
+    var t={k:0,c:0,p:0,f:0,na:0,su:0,fi:0,sa:0,tr:0};
+    its.forEach(function(i){t.k+=i.kcal;t.c+=i.c;t.p+=i.p;t.f+=i.f;t.na+=i.na||0;t.su+=i.sugar||0;t.fi+=i.fiber||0;t.sa+=i.sat||0;t.tr+=i.trans||0;});
+    var burned=ws.reduce(function(a,i){return a+i.kcal;},0);
+    var w=S.weights.filter(function(x){return x.date===d;})[0];
+    var pr=calc(profileFor(d));
+    return {'日期':d,'碳水(g)':r1(t.c),'蛋白質(g)':r1(t.p),'脂肪(g)':r1(t.f),'攝取卡路里kcal':r0(t.k),
+      '攝取水(ml)':S.water[d]>0?S.water[d]:'','體重kg':w?w.kg:'','體脂率%':(w&&w.fat>0)?w.fat:'',
+      '基礎代謝率BMR kcal':r0(pr.bmr),'運動量 kcal':r0(burned),'鈉(mg)':r0(t.na),'糖(g)':r1(t.su),'膳食纖維(g)':r1(t.fi),'飽和脂肪(g)':r1(t.sa),'反式脂肪(g)':r1(t.tr)};
+  }
+  function rowsFromState(){
+    var m={};Object.keys(SHEETS).forEach(function(n){m[n]={};});
+    S.myFoods.forEach(function(f){
+      m['食物庫']['k'+f.id]={'id':String(f.id),'品名':f.name,'品牌':f.brand||'','數量':(f.amount===undefined||f.amount===null)?'':f.amount,'單位':f.unit||'',
+        '卡路里':r1(f.kcal),'碳水':r1(f.c),'糖':r1(f.sugar||0),'膳食纖維':r1(f.fiber||0),'蛋白質':r1(f.p),'脂肪':r1(f.f),'飽和脂肪':r1(f.sat||0),'反式脂肪':r1(f.trans||0),'鈉':r0(f.na||0)};
+    });
+    S.myEx.forEach(function(x){
+      var mi=x.min||60;
+      m['運動庫']['k'+x.id]={'id':String(x.id),'運動項目':x.name,'時間':mi,'卡路里':r1(x.kcalPerMin*mi)};
+    });
+    var dates={};
+    Object.keys(S.foods).forEach(function(d){(S.foods[d]||[]).forEach(function(i){
+      dates[d]=1;
+      m['飲食紀錄']['k'+i.id]={'id':String(i.id),'日期':d,'餐別':i.meal,'品名':i.name,'品牌':i.brand||'','卡路里':r1(i.kcal),'碳水':r1(i.c),'糖':r1(i.sugar||0),'膳食纖維':r1(i.fiber||0),'蛋白質':r1(i.p),'脂肪':r1(i.f),'飽和脂肪':r1(i.sat||0),'反式脂肪':r1(i.trans||0),'鈉':r0(i.na||0)};
+    });});
+    Object.keys(S.workouts).forEach(function(d){(S.workouts[d]||[]).forEach(function(i){
+      dates[d]=1;
+      m['運動紀錄']['k'+i.id]={'id':String(i.id),'日期':d,'運動項目':i.name,'時間':r1(i.min),'卡路里':r1(i.kcal)};
+    });});
+    S.weights.forEach(function(w){dates[w.date]=1;});
+    Object.keys(S.water).forEach(function(d){if(S.water[d]>0)dates[d]=1;});
+    Object.keys(dates).sort().forEach(function(d){m['每日紀錄']['k'+d]=dailyRow(d);});
+    S.pHist.forEach(function(h){m['設定']['k'+h.from]={'生效日':h.from,'內容':JSON.stringify(h.p)};});
+    return m;
+  }
+  function stateFromRows(m){
+    var V=function(n){var o=m[n]||{};return Object.keys(o).map(function(k){return o[k];});};
+    S.myFoods=V('食物庫').map(function(r){
+      var a=r['數量'];
+      return {id:String(r.id),name:String(r['品名']),brand:r['品牌']||'',amount:(a===''||a==null)?'':num(a),unit:mapUnit(r['單位']),
+        kcal:num(r['卡路里']),c:num(r['碳水']),sugar:num(r['糖']),fiber:num(r['膳食纖維']),p:num(r['蛋白質']),f:num(r['脂肪']),sat:num(r['飽和脂肪']),trans:num(r['反式脂肪']),na:num(r['鈉'])};
+    });
+    S.myEx=V('運動庫').map(function(r){
+      var mi=num(r['時間'])||60;
+      return {id:String(r.id),name:String(r['運動項目']),min:mi,kcalPerMin:num(r['卡路里'])/mi};
+    });
+    S.foods={};
+    V('飲食紀錄').forEach(function(r){
+      var d=String(r['日期']);(S.foods[d]=S.foods[d]||[]).push({id:String(r.id),name:String(r['品名']),brand:r['品牌']||'',meal:r['餐別'],
+        kcal:num(r['卡路里']),c:num(r['碳水']),sugar:num(r['糖']),fiber:num(r['膳食纖維']),p:num(r['蛋白質']),f:num(r['脂肪']),sat:num(r['飽和脂肪']),trans:num(r['反式脂肪']),na:num(r['鈉'])});
+    });
+    S.workouts={};
+    V('運動紀錄').forEach(function(r){
+      var d=String(r['日期']);(S.workouts[d]=S.workouts[d]||[]).push({id:String(r.id),name:String(r['運動項目']),min:num(r['時間']),kcal:num(r['卡路里'])});
+    });
+    S.weights=[];S.water={};
+    V('每日紀錄').forEach(function(r){
+      var d=String(r['日期']),kg=num(r['體重kg']),fat=num(r['體脂率%']),ml=num(r['攝取水(ml)']);
+      if(kg>0){var w={date:d,kg:kg};if(fat>0)w.fat=fat;S.weights.push(w);}
+      if(ml>0)S.water[d]=ml;
+    });
+    var ph=[];
+    V('設定').forEach(function(r){try{ph.push({from:String(r['生效日']),p:JSON.parse(r['內容'])});}catch(e){}});
+    ph.sort(function(a,b){return a.from<b.from?-1:a.from>b.from?1:0;});
+    if(ph.length)S.pHist=ph;
+    S.profile=Object.assign({},DEF,JSON.parse(JSON.stringify(profileFor(todayStr()))));
+  }
+  function merge3(n,L,R,B){
+    var out={},keys={};
+    Object.keys(L).forEach(function(k){keys[k]=1;});Object.keys(R).forEach(function(k){keys[k]=1;});
+    Object.keys(keys).forEach(function(k){
+      var l=L[k],r=R[k],b=B[k];
+      var cl=l?ck(n,l):null,cr=r?ck(n,r):null,cb=b?ck(n,b):null;
+      if(l&&r){out[k]=(cl===cr)?l:((cl!==cb&&cr===cb)?l:r);}
+      else if(l){if(!b||cl!==cb)out[k]=l;}
+      else if(r){if(!b||cr!==cb)out[k]=r;}
+    });
+    return out;
+  }
+  function diffOps(want,have){
+    var ops=[];
+    Object.keys(SHEETS).forEach(function(n){
+      var W=want[n]||{},H=have[n]||{},kc=SHEETS[n][0];
+      Object.keys(W).forEach(function(k){if(!H[k]||rs(n,W[k])!==rs(n,H[k]))ops.push({op:'upsert',sheet:n,row:W[k]});});
+      Object.keys(H).forEach(function(k){if(!W[k])ops.push({op:'delete',sheet:n,key:String(H[k][kc])});});
+    });
+    return ops;
+  }
+  function apiGet(){
+    var u=SYNC.url+(SYNC.url.indexOf('?')>=0?'&':'?')+'token='+encodeURIComponent(SYNC.token)+'&_='+Date.now();
+    return fetch(u,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){if(!j.ok)throw new Error(j.error||'讀取失敗');return j.data;});
+  }
+  function apiPost(ops){
+    return fetch(SYNC.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:SYNC.token,ops:ops})})
+      .then(function(r){return r.json();}).then(function(j){if(!j.ok)throw new Error(j.error||'寫入失敗');});
+  }
+  async function postChunks(ops){for(var i=0;i<ops.length;i+=120)await apiPost(ops.slice(i,i+120));}
+  function saveBase(){try{localStorage.setItem(BKEY,JSON.stringify(SYNC.base));}catch(e){}}
+  function loadCfg(){
+    try{var c=JSON.parse(localStorage.getItem(SKEY)||'null');if(c){SYNC.url=c.url||'';SYNC.token=c.token||'';}}catch(e){}
+    try{var b=JSON.parse(localStorage.getItem(BKEY)||'null');if(b)SYNC.base=b;}catch(e){}
+  }
+  function hhmm(t){var d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes());}
+  function setStatus(st,msg){
+    SYNC.state=st;SYNC.msg=msg||'';
+    var txt={off:'雲端：未設定',ok:'雲端：已同步 '+(SYNC.last?hhmm(SYNC.last):''),syncing:'雲端：同步中…',pending:'雲端：待上傳',error:'雲端：連線失敗'}[st]||'';
+    var p=$('syncPill');p.textContent=txt;p.className='pill'+(st==='ok'?' ok':st==='error'?' err':'');
+    var s=$('syStatus');if(s)s.textContent=txt+(msg?'（'+msg+'）':'');
+  }
+  function refreshAll(){renderToday();syncGoalInputs();renderGoal();renderProgress();}
+  function scheduleSync(){
+    if(!SYNC.ready||!cfgOk())return;
+    setStatus('pending');clearTimeout(SYNC.timer);SYNC.timer=setTimeout(push,1500);
+  }
+  async function push(){
+    if(!cfgOk())return;
+    if(SYNC.busy){SYNC.again=true;return;}
+    SYNC.busy=true;setStatus('syncing');
+    try{
+      var want=rowsFromState(),ops=diffOps(want,SYNC.base);
+      if(ops.length)await postChunks(ops);
+      SYNC.base=want;saveBase();SYNC.last=Date.now();setStatus('ok');
+    }catch(e){setStatus('error',String(e.message||e));}
+    finally{SYNC.busy=false;if(SYNC.again){SYNC.again=false;push();}}
+  }
+  async function pullMerge(){
+    if(!cfgOk())return;
+    if(SYNC.busy){SYNC.again=true;return;}
+    SYNC.busy=true;setStatus('syncing');
+    try{
+      var data=await apiGet(),R={};
+      Object.keys(SHEETS).forEach(function(n){
+        R[n]={};(data[n]||[]).forEach(function(row){var r=fillRow(n,row);R[n]['k'+nv(r[SHEETS[n][0]])]=r;});
+      });
+      var L=rowsFromState(),merged={};
+      var localRows=0;Object.keys(L).forEach(function(n){if(n!=='設定')localRows+=Object.keys(L[n]).length;});
+      if(localRows===0)SYNC.base={};
+      Object.keys(SHEETS).forEach(function(n){merged[n]=merge3(n,L[n],R[n],SYNC.base[n]||{});});
+      stateFromRows(merged);
+      var want=rowsFromState(),ops=diffOps(want,R);
+      if(ops.length)await postChunks(ops);
+      var changed=JSON.stringify(L)!==JSON.stringify(want);
+      SYNC.base=want;saveBase();persist();SYNC.last=Date.now();setStatus('ok');
+      var ae=document.activeElement;
+      if(changed&&!(ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)))refreshAll();
+    }catch(e){setStatus('error',String(e.message||e));}
+    finally{SYNC.busy=false;if(SYNC.again){SYNC.again=false;push();}}
+  }
+  function renderSyncTab(){
+    $('syUrl').value=SYNC.url;$('syToken').value=SYNC.token;
+    $('syOverwrite').textContent=SYNC.confirm?'再按一次確認：清空本機並載入':'以試算表為準（清空本機重新載入）';
+    setStatus(SYNC.state,SYNC.msg);
+  }
+  function initSync(){
+    $('syncPill').onclick=function(){showTab('sync');};
+    $('syConnect').onclick=function(){
+      var u=$('syUrl').value.trim(),t=$('syToken').value.trim();
+      if(!/^https:\/\/script\.google\.com\//.test(u)||!t){setStatus('error','請填入完整的網址與 TOKEN');return;}
+      SYNC.url=u;SYNC.token=t;
+      try{localStorage.setItem(SKEY,JSON.stringify({url:u,token:t}));}catch(e){}
+      pullMerge();
+    };
+    $('syNow').onclick=function(){if(!cfgOk()){setStatus('error','尚未設定');return;}pullMerge();};
+    $('syOverwrite').onclick=function(){
+      if(!cfgOk()){setStatus('error','尚未設定');return;}
+      if(!SYNC.confirm){SYNC.confirm=true;renderSyncTab();return;}
+      SYNC.confirm=false;
+      S.foods={};S.workouts={};S.weights=[];S.water={};S.myFoods=[];S.myEx=[];SYNC.base={};
+      persist();pullMerge();renderSyncTab();
+    };
+    $('syClear').onclick=function(){
+      SYNC.url='';SYNC.token='';SYNC.base={};
+      try{localStorage.removeItem(SKEY);localStorage.removeItem(BKEY);}catch(e){}
+      renderSyncTab();setStatus('off');
+    };
+    loadCfg();SYNC.ready=true;
+    setStatus(cfgOk()?'pending':'off');
+    if(cfgOk())pullMerge();
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&cfgOk()&&Date.now()-SYNC.last>30000)pullMerge();});
+    window.addEventListener('online',function(){if(cfgOk())pullMerge();});
+  }
+
+  load();
+  if(!S.pHist.length)S.pHist=[{from:'0000-00-00',p:JSON.parse(JSON.stringify(S.profile))}];
+  syncGoalInputs();
+  renderToday();
+  initSync();
+})();
+
+</script>
+</body>
+</html>
