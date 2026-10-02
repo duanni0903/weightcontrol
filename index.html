@@ -466,7 +466,17 @@ var DEFAULT_TOKEN = '';
   function r2(v){return Math.round(v*100)/100;}
   function foodListInner(){
     var q=foodQ.trim().toLowerCase();
-    var arr=S.myFoods.filter(function(f){return !q||(String(f.name||'')+' '+String(f.brand||'')).toLowerCase().indexOf(q)>=0;});
+    var last={};
+    Object.keys(S.foods).forEach(function(d){(S.foods[d]||[]).forEach(function(it){
+      var pa=parseAmt(it.name),nm=pa?pa.base:it.name,key=d+'|'+String(it.id);
+      if(!last[nm]||key>last[nm])last[nm]=key;
+    });});
+    var order={};S.myFoods.forEach(function(f,ix){order[f.id]=ix;});
+    var arr=S.myFoods.slice().sort(function(a,b){
+      var la=last[a.name]||'',lb=last[b.name]||'';
+      if(la!==lb)return la<lb?1:-1;
+      return order[a.id]-order[b.id];
+    }).filter(function(f){return !q||(String(f.name||'')+' '+String(f.brand||'')).toLowerCase().indexOf(q)>=0;});
     if(!arr.length)return '<div class="empty" style="padding:12px 0">沒有符合的食物</div>';
     return arr.map(function(f){
       var base=num(f.amount)>0?num(f.amount):1;
