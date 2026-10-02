@@ -151,6 +151,8 @@ nav button.on{color:var(--primary);font-weight:700}
 .famt{display:flex;align-items:center;gap:3px;padding:0 6px;border-left:1px solid var(--line)}
 .famt input{width:62px;min-height:36px;padding:4px 6px;text-align:right}
 .famt em{font-style:normal;font-size:12px;color:var(--muted);min-width:1.2em}
+.iamt{border-left:0;padding:0 8px}
+.item .iamt input{width:64px}
 .fk b{font-size:15px}
 .fk{text-align:right;font-weight:600;white-space:nowrap}
 .frow .chipx{border:0;background:transparent;color:var(--muted);width:36px;font-size:14px;border-left:1px solid var(--line);cursor:pointer}
@@ -454,6 +456,13 @@ var DEFAULT_TOKEN = '';
   var foodQ='';
   var WIDE=window.matchMedia('(min-width: 980px)');
   function isWide(){return WIDE.matches;}
+  function parseAmt(name){
+    var m=/^(.*\S)\s+×(\d+(?:\.\d+)?)$/.exec(name);
+    if(m)return {base:m[1],amt:+m[2],unit:'×'};
+    m=/^(.*\S)\s+(\d+(?:\.\d+)?)([^\d\s×]*)$/.exec(name);
+    if(m)return {base:m[1],amt:+m[2],unit:m[3]};
+    return null;
+  }
   function r2(v){return Math.round(v*100)/100;}
   function foodListInner(){
     var q=foodQ.trim().toLowerCase();
@@ -492,7 +501,7 @@ var DEFAULT_TOKEN = '';
          '<button class="addbtn'+(isOpen?' open':'')+'" data-open="'+m+'">'+(isOpen?'收合':'＋ 新增食物')+'</button></div>';
       if(!arr.length&&!isOpen)h+='<div class="empty">還沒有記錄</div>';
       arr.forEach(function(i){
-        h+='<div class="item"><div class="n">'+esc(i.name)+'<small>'+(i.brand?esc(i.brand)+'・':'')+'蛋白 '+r1(i.p)+'g・碳水 '+r1(i.c)+'g・脂肪 '+r1(i.f)+'g'+(i.na?'・鈉 '+r0(i.na)+'mg':'')+'</small></div><div class="k">'+r0(i.kcal)+'</div><button class="x" data-del="'+i.id+'" aria-label="刪除">✕</button></div>';
+        var pa=parseAmt(i.name);h+='<div class="item"><div class="n">'+esc(pa?pa.base:i.name)+'<small>'+(i.brand?esc(i.brand)+'・':'')+'蛋白 '+r1(i.p)+'g・碳水 '+r1(i.c)+'g・脂肪 '+r1(i.f)+'g'+(i.na?'・鈉 '+r0(i.na)+'mg':'')+'</small></div>'+(pa?'<span class="famt iamt"><input type="number" inputmode="decimal" step="any" min="0" data-iamt="'+i.id+'" value="'+r2(pa.amt)+'" aria-label="數量"><em>'+esc(pa.unit==='×'?'份':pa.unit)+'</em></span>':'')+'<div class="k">'+r0(i.kcal)+'</div><button class="x" data-del="'+i.id+'" aria-label="刪除">✕</button></div>';
       });
       if(isOpen&&!isWide())h+=panelHtml(m);
       h+='</div>';
@@ -539,6 +548,14 @@ var DEFAULT_TOKEN = '';
     else if(/^p(Name|Brand|Amt|UnitC|Kcal|P|C|F|Sugar|Fiber|Sat|Trans|Na)$/.test(e.target.id))readDraft();
   });
   on2('change',function(e){
+    if(e.target.dataset&&e.target.dataset.iamt){
+      var it=dayItems().filter(function(x){return x.id===e.target.dataset.iamt;})[0],pq=it&&parseAmt(it.name),nv2=num(e.target.value,0);
+      if(it&&pq&&nv2>0&&pq.amt>0&&nv2!==pq.amt){
+        var k=nv2/pq.amt;['kcal','p','c','f','sugar','fiber','sat','trans','na'].forEach(function(a){it[a]=(it[a]||0)*k;});
+        it.name=pq.base+(pq.unit==='×'?' ×'+r2(nv2):' '+r2(nv2)+pq.unit);save();
+      }
+      renderToday();return;
+    }
     if(e.target.id==='pUnit'){readDraft();renderMeals();var el=$(draft.unit===OTHER?'pUnitC':'pUnit');if(el)el.focus();}
   });
   on2('click',function(e){
