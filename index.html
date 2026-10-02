@@ -120,6 +120,7 @@ button{font:inherit;cursor:pointer}
 .pill{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:4px 12px;font-size:12px;min-height:32px;white-space:nowrap}
 .pill.ok{color:var(--ok)}
 .pill.err{color:var(--over)}
+.mh .ms.over{color:var(--over);font-weight:700}
 .more{margin:2px 0 4px}
 .more summary{cursor:pointer;color:var(--primary);font-size:14px;padding:6px 0}
 .create{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
@@ -205,6 +206,13 @@ nav button.on{color:var(--primary);font-weight:700}
         <div class="field"><label for="gNa">鈉上限 (mg)</label><input id="gNa" type="number" inputmode="decimal" min="500" max="6000"></div>
         <div class="field"></div>
       </div>
+      <div class="divider">各餐目標熱量（選填，點心自動補足差額）</div>
+      <div class="row">
+        <div class="field"><label for="gMB">早餐 (kcal)</label><input id="gMB" type="number" inputmode="decimal" min="0" max="5000"></div>
+        <div class="field"><label for="gML">午餐 (kcal)</label><input id="gML" type="number" inputmode="decimal" min="0" max="5000"></div>
+        <div class="field"><label for="gMD">晚餐 (kcal)</label><input id="gMD" type="number" inputmode="decimal" min="0" max="5000"></div>
+      </div>
+      <p class="note" id="mealNote" style="margin-top:0"></p>
     </div>
     <div class="card" id="goalResult"></div>
   </section>
@@ -249,7 +257,7 @@ nav button.on{color:var(--primary);font-weight:700}
 <script>
 (function(){
   var KEY='kcal-app-v1';
-  var DEF={naTarget:2300,kcalOverride:'',proOverride:'',fatOverride:'',carbOverride:'',bmrOverride:'',addBack:false,sex:'m',age:30,height:170,weight:70,act:1.375,goal:'cut',pct:20,ppk:2.0,fatPct:25,saved:false};
+  var DEF={mealB:'',mealL:'',mealD:'',naTarget:2300,kcalOverride:'',proOverride:'',fatOverride:'',carbOverride:'',bmrOverride:'',addBack:false,sex:'m',age:30,height:170,weight:70,act:1.375,goal:'cut',pct:20,ppk:2.0,fatPct:25,saved:false};
   var S={profile:Object.assign({},DEF),foods:{},weights:[],myFoods:[],workouts:{},myEx:[],pHist:[],water:{}};
   var PRESETS=[
     ['雞胸肉 100g',120,23,0,2],['白飯 1碗',280,5,62,0.5],['水煮蛋 1顆',75,6.5,0.5,5],
@@ -324,7 +332,12 @@ nav button.on{color:var(--primary);font-weight:700}
     var protein=num(p.proOverride)>0?num(p.proOverride):p.ppk*p.weight;
     var fat=num(p.fatOverride)>0?num(p.fatOverride):kcal*(p.fatPct/100)/9;
     var carb=num(p.carbOverride)>0?num(p.carbOverride):Math.max(0,(kcal-protein*4-fat*9)/4);
-    return {na:num(p.naTarget,2300),kcalF:kcalF,bmrF:bmrF,bmr:bmr,tdee:tdee,kcal:kcal,protein:protein,fat:fat,carb:carb};
+    var mB=num(p.mealB)>0?num(p.mealB):Math.round(kcal*0.30),
+        mL=num(p.mealL)>0?num(p.mealL):Math.round(kcal*0.35),
+        mD=num(p.mealD)>0?num(p.mealD):Math.round(kcal*0.30);
+    var snack=Math.max(0,Math.round(kcal)-mB-mL-mD);
+    var meals={'早餐':mB,'午餐':mL,'晚餐':mD,'點心':snack};
+    return {meals:meals,mealOver:(mB+mL+mD)>Math.round(kcal),na:num(p.naTarget,2300),kcalF:kcalF,bmrF:bmrF,bmr:bmr,tdee:tdee,kcal:kcal,protein:protein,fat:fat,carb:carb};
   }
 
   function dayItems(){return S.foods[curDate]||[];}
@@ -436,12 +449,13 @@ nav button.on{color:var(--primary);font-weight:700}
   function renderMeals(){
     var items=dayItems(), h='';
     var total=items.reduce(function(a,i){return a+i.kcal;},0);
-    h+='<div class="card group"><div class="gh"><h2>飲食</h2><span>'+r0(total)+' kcal</span></div>';
+    var TM=calc(profileFor(curDate));
+    h+='<div class="card group"><div class="gh"><h2>飲食</h2><span>'+r0(total)+' / '+r0(TM.kcal)+' kcal</span></div>';
     MEALS.forEach(function(m){
       var arr=items.filter(function(i){return i.meal===m;});
       var sum=arr.reduce(function(a,i){return a+i.kcal;},0);
       var isOpen=openMeal===m;
-      h+='<div class="meal"><div class="mh"><h3>'+m+'</h3><span class="ms">'+r0(sum)+' kcal</span>'+
+      h+='<div class="meal"><div class="mh"><h3>'+m+'</h3><span class="ms'+(sum>TM.meals[m]?' over':'')+'">'+r0(sum)+' / '+r0(TM.meals[m])+' kcal</span>'+
          '<button class="addbtn'+(isOpen?' open':'')+'" data-open="'+m+'">'+(isOpen?'收合':'＋ 新增食物')+'</button></div>';
       if(!arr.length&&!isOpen)h+='<div class="empty">還沒有記錄</div>';
       arr.forEach(function(i){
@@ -702,7 +716,7 @@ nav button.on{color:var(--primary);font-weight:700}
   function syncGoalInputs(){
     var p=S.profile;
     $('gAge').value=p.age;$('gH').value=p.height;$('gW').value=p.weight;
-    $('gAct').value=String(p.act);$('gBmr').value=p.bmrOverride;$('gNa').value=p.naTarget;$('gKcal').value=p.kcalOverride;$('gPro').value=p.proOverride;$('gFatG').value=p.fatOverride;$('gCarb').value=p.carbOverride;$('gPct').value=p.pct;$('gPpk').value=p.ppk;$('gFat').value=p.fatPct;
+    $('gAct').value=String(p.act);$('gBmr').value=p.bmrOverride;$('gNa').value=p.naTarget;$('gMB').value=p.mealB;$('gML').value=p.mealL;$('gMD').value=p.mealD;$('gKcal').value=p.kcalOverride;$('gPro').value=p.proOverride;$('gFatG').value=p.fatOverride;$('gCarb').value=p.carbOverride;$('gPct').value=p.pct;$('gPpk').value=p.ppk;$('gFat').value=p.fatPct;
     [].forEach.call($('sexSeg').children,function(b){b.classList.toggle('on',b.dataset.v===p.sex);});
     [].forEach.call($('goalSeg').children,function(b){b.classList.toggle('on',b.dataset.v===p.goal);});
     $('gPct').disabled=p.goal==='maintain';
@@ -729,11 +743,20 @@ nav button.on{color:var(--primary);font-weight:700}
     h+='<p class="note">設定從今天（'+(+tn.split('-')[1])+'/'+(+tn.split('-')[2])+'）起生效，過去日期維持當時的設定。</p>';
     h+='<button class="btn" id="saveGoal" style="margin-top:12px">'+(p.saved?'更新為今日目標':'儲存為今日目標')+'</button>';
     $('goalResult').innerHTML=h;
+    $('gMB').placeholder=Math.round(T.kcal*0.30);$('gML').placeholder=Math.round(T.kcal*0.35);$('gMD').placeholder=Math.round(T.kcal*0.30);
+    var mn=$('mealNote');
+    if(mn){
+      mn.innerHTML='早餐 '+T.meals['早餐']+' ＋ 午餐 '+T.meals['午餐']+' ＋ 晚餐 '+T.meals['晚餐']+' ＋ 點心（自動補足）'+T.meals['點心']+' ＝ 總目標 '+r0(T.kcal)+' kcal'+
+        (T.mealOver?'<br><b style="color:var(--over)">三餐合計已超過總目標，請調低其中一餐。</b>':'');
+    }
   }
   function readGoal(){
     var p=S.profile;
     p.age=num($('gAge').value,p.age);p.height=num($('gH').value,p.height);p.weight=num($('gW').value,p.weight);
-    p.act=num($('gAct').value,p.act);p.naTarget=num($('gNa').value,2300);p.bmrOverride=$('gBmr').value===''?'':num($('gBmr').value);
+    p.act=num($('gAct').value,p.act);p.naTarget=num($('gNa').value,2300);
+    p.mealB=$('gMB').value===''?'':num($('gMB').value);
+    p.mealL=$('gML').value===''?'':num($('gML').value);
+    p.mealD=$('gMD').value===''?'':num($('gMD').value);p.bmrOverride=$('gBmr').value===''?'':num($('gBmr').value);
     p.kcalOverride=$('gKcal').value===''?'':num($('gKcal').value);
     p.proOverride=$('gPro').value===''?'':num($('gPro').value);
     p.fatOverride=$('gFatG').value===''?'':num($('gFatG').value);
@@ -796,7 +819,7 @@ nav button.on{color:var(--primary);font-weight:700}
     var g=b.dataset.v;S.profile.goal=g;S.profile.pct=g==='cut'?20:g==='bulk'?10:0;S.profile.ppk=g==='cut'?2.0:1.8;
     commitProfile();save();syncGoalInputs();renderGoal();
   });
-  ['gAge','gH','gW','gAct','gBmr','gKcal','gPro','gFatG','gCarb','gNa','gPct','gPpk','gFat'].forEach(function(id){
+  ['gAge','gH','gW','gAct','gBmr','gKcal','gPro','gFatG','gCarb','gNa','gMB','gML','gMD','gPct','gPpk','gFat'].forEach(function(id){
     $(id).addEventListener('input',function(){readGoal();commitProfile();save();renderGoal();});
   });
   $('useLatest').onclick=function(){var lw=latestWeight();if(lw){S.profile.weight=lw.kg;commitProfile();save();syncGoalInputs();renderGoal();}};
